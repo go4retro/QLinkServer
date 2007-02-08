@@ -122,7 +122,7 @@ public class SendEmailState extends AbstractState {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Saving email to " + _sRecipient);
-            String sql="INSERT INTO email (recipient_id,recipient,sender_id,sender,subject,body,unread,received_date) VALUES (" + id + ",NULL," + _server.getID() + ",NULL,NULL,'" + text.replaceAll("'","\\\\'") + "','Y',now())";
+            String sql="INSERT INTO email (recipient_id,recipient,sender_id,sender,subject,body,unread,received_date) VALUES (" + id + ",NULL," + _server.getAccountID() + ",NULL,NULL,'" + text.replaceAll("'","\\\\'") + "','Y',now())";
             //_log.debug(sql);
             stmt.execute(sql);
             if(stmt.getUpdateCount()>0) {

@@ -123,7 +123,7 @@ public abstract class AbstractState implements QState {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Checking for email to " + _server.getHandle());
-            rs=stmt.executeQuery("SELECT email_id FROM email WHERE unread='Y' AND recipient_id=" + _server.getID() + " LIMIT 1");
+            rs=stmt.executeQuery("SELECT email_id FROM email WHERE unread='Y' AND recipient_id=" + _server.getAccountID() + " LIMIT 1");
             return rs.next();
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);

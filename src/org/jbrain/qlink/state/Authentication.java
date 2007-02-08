@@ -47,11 +47,6 @@ public class Authentication extends AbstractPhaseState {
 	private static EntryDialog _newUserDialog;
 	private static InfoDialog _welcomeDialog;
 
-	/**
-	 * 
-	 * @uml.property name="_newUserCallBack"
-	 * @uml.associationEnd multiplicity="(1 1)"
-	 */
 	private DialogCallBack _newUserCallBack = new DialogCallBack() {
 		/* (non-Javadoc)
 		 * @see org.jbrain.qlink.state.DialogCallBack#handleResponse(org.jbrain.qlink.dialog.AbstractDialog, org.jbrain.qlink.cmd.action.Action)
@@ -61,61 +56,75 @@ public class Authentication extends AbstractPhaseState {
 			_log.debug("We received " + a.getName() + " from entry dialog");
 			if (a instanceof ZA) {
 				_handle = ((ZA) a).getResponse();
-				// uppercase the first letter... and trim
-				_handle = _handle.substring(0, 1).toUpperCase()
-					+ _handle.substring(1).trim();
-				if (_handle.length() > 10) {
-					_log.debug("Handle '" + _handle + "' is too long");
+				if(_handle==null || _handle.length()==0) {
+					_log.debug("Handle is null");
 					_server.send(_newUserDialog
-						.getErrorResponse("We're sorry, but '"
-							+ _handle
-							+ "' is too long.  Please select a shorter name"));
-				} else if (containsInvalidChars(_handle)) {
-					_log.debug("'" + _handle + "' contains invalid characters");
-					_server
-						.send(_newUserDialog
-							.getErrorResponse("We're sorry, but screen names can only contains letters, digits, or spaces.  Please select another name."));
-				} else if (!Character.isLetter(_handle.charAt(0))) {
-					_log.debug("'"
-						+ _handle
-						+ "' contains leading space or number");
-					_server
-						.send(_newUserDialog
-							.getErrorResponse("We're sorry, but screen names must start with a letter.  Please select another name."));
-				} else
-					try {
-						if (containsReservedWords(_handle)) {
-							_log.debug("'"
+						.getErrorResponse("We're sorry, but you must select a screen name"));
+				} else {
+					// clean off handle.
+					_handle=_handle.trim();
+					// uppercase first char
+					_handle=_handle.substring(0,1).toUpperCase() + _handle.substring(1);
+					if (_handle.length() > 10) {
+						_log.debug("Handle '" + _handle + "' is too long");
+						_server.send(_newUserDialog
+							.getErrorResponse("We're sorry, but '"
 								+ _handle
-								+ "' contains a reserved word");
-							_server
-								.send(_newUserDialog
-									.getErrorResponse("We're sorry, but your choice contains a reserved word.  Please select another name."));
-						} else {
-							// adding name.
-							if (addUser()) {
-								_server.setHandle(_handle);
-								_server
-									.send(((EntryDialog) d)
-										.getSuccessResponse("Congratulations, "
-											+ _handle
-											+ "!\n\nWe hope you enjoy your visit to Q-LINK."));
-								return true;
-							} else {
+								+ "' is too long.  Please select a shorter name"));
+					} else if (_handle.length() < 3) {
+							_log.debug("Handle '" + _handle + "' is too short");
+							_server.send(_newUserDialog
+								.getErrorResponse("We're sorry, but '"
+									+ _handle
+									+ "' is too short.  Please select a longer name."));
+					} else if (containsInvalidChars(_handle)) {
+						_log.debug("'" + _handle + "' contains invalid characters");
+						_server
+							.send(_newUserDialog
+								.getErrorResponse("We're sorry, but screen names can only contains letters, digits, or spaces.  Please select another name."));
+					} else if (!Character.isLetter(_handle.charAt(0))) {
+						_log.debug("'"
+							+ _handle
+							+ "' contains leading space or number");
+						_server
+							.send(_newUserDialog
+								.getErrorResponse("We're sorry, but screen names must start with a letter.  Please select another name."));
+					} else {
+						try {
+							if (containsReservedWords(_handle)) {
+								_log.debug("'"
+									+ _handle
+									+ "' contains a reserved word");
 								_server
 									.send(_newUserDialog
-										.getErrorResponse("We're sorry, but '"
-											+ _handle
-											+ "' is already in use.  Please select another name."));
+										.getErrorResponse("We're sorry, but your choice contains a reserved word.  Please select another name."));
+							} else {
+								// adding name.
+								if (addUser()) {
+									_server.setHandle(_handle);
+									_server
+										.send(((EntryDialog) d)
+											.getSuccessResponse("Congratulations, "
+												+ _handle
+												+ "!\n\nWe hope you enjoy your visit to Q-LINK."));
+									return true;
+								} else {
+									_server
+										.send(_newUserDialog
+											.getErrorResponse("We're sorry, but '"
+												+ _handle
+												+ "' is already in use.  Please select another name."));
+								}
 							}
+						} catch (SQLException e) {
+							// something very bad happened... We cannot continue.
+							_log.error("Error during reserved word lookup", e);
+							_server.terminate();
 						}
-					} catch (SQLException e) {
-						// something very bad happened... We cannot continue.
-						_log.error("Error during reserved word lookup", e);
-						_server.terminate();
 					}
+				}
 			} else if (a instanceof D2) {
-				_server.send(new SendAccountNumber(_account, _handle));
+				_server.send(new AddPrimaryAccount(_account, _handle));
 				_server.send(new ClearExtraAccounts());
 				_server.send(new ChangeAccessCode(_code));
 				_log.info("PHASE: Updating access code on disk");
@@ -268,7 +277,7 @@ public class Authentication extends AbstractPhaseState {
                 stmt = conn.createStatement();
                 rs=stmt.executeQuery("SELECT users.user_id,users.access_code,users.active,accounts.active,accounts.handle from accounts,users WHERE accounts.user_id=users.user_id AND accounts.account_id=" + id);
         	} catch (NumberFormatException e) {
-            	_log.error("Account code '" + _account + "' not a number, new user");
+            	_log.info("Account code '" + _account + "' not a number, new user");
         	}
             if(id>-1 && rs.next()) {
             	// possible valid account...
@@ -281,8 +290,9 @@ public class Authentication extends AbstractPhaseState {
 		            		// active account
 		                	// set Screen name
 		                	_server.setHandle(_handle);
-		                	_server.setID((int)id);
+		                	_server.setAccountID((int)id);
 		                	_iUserID=rs.getInt("users.user_id");
+		                	_server.setUserID(_iUserID);
 		                	// update access time information in DB
 		                	// if these fail, we're not too worried
 		                    stmt.execute("UPDATE users set last_access=now() WHERE user_id=" + _iUserID);
@@ -292,6 +302,15 @@ public class Authentication extends AbstractPhaseState {
 		                    // TODO enable this at appropriate time.
 		                    //_code=getNewCode();
 	
+		                    // temp to clean up acounts:
+	            			DBUtils.close(rs);
+		                    rs=stmt.executeQuery("SELECT account_id from accounts_fix where account_id=" + id);
+		                    if(!rs.next()) {
+		                    	_log.debug("Fixing account: '" + id + "'");
+			    				_server.send(new AddPrimaryAccount(_account, _handle));
+			    				_server.send(new ClearExtraAccounts());
+			                    stmt.execute("insert into accounts_fix (account_id) VALUES (" + id + ")");
+		                    }
 		                	// update access code.
 		    	    		_server.send(new ChangeAccessCode(_code));
 		    				_log.info("PHASE: Updating access code on disk");
@@ -379,7 +398,7 @@ public class Authentication extends AbstractPhaseState {
                         	// get account number.
                         	rs=stmt.executeQuery("SELECT account_id from accounts WHERE user_id=" + _iUserID);
                         	if(rs.next()) {
-                        		_server.setID(rs.getInt("account_id"));
+                        		_server.setAccountID(rs.getInt("account_id"));
                         		DecimalFormat format=new DecimalFormat("0000000000");
                         		_account=format.format(rs.getInt("account_id"));
                         		rc=true;

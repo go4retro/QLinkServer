@@ -60,7 +60,8 @@ public class QServer {
 	private String _sHandle=null;
 	private static Hashtable _htServers=new Hashtable();
 	private Connection _conn=null;
-	private int _iID;
+	private int _iAccountID;
+	private int _iUserID;
 	private Date _startTime;
 
 	/**
@@ -143,13 +144,22 @@ public class QServer {
 	/**
 	 * @param int1
 	 */
-	public void setID(int i) {
-		_log.debug("User ID: " + i);
-		_iID=i;
+	public void setAccountID(int i) {
+		_log.debug("Account ID: " + i);
+		_iAccountID=i;
 	}
 	
-	public int getID() {
-		return _iID;
+	public int getAccountID() {
+		return _iAccountID;
+	}
+
+	public void setUserID(int i) {
+		_log.debug("Account ID: " + i);
+		_iUserID=i;
+	}
+	
+	public int getUserID() {
+		return _iUserID;
 	}
 
 	/**

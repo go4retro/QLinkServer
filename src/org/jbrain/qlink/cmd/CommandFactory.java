@@ -44,7 +44,7 @@ public class CommandFactory {
 		if(b[start]!=AbstractCommand.CMD_START){
 			return null;
 		}
-		switch (b[7]&0xff) {
+		switch (b[start+7]&0xff) {
 			case Ping.CMD_PING:
 				return new Ping(b,start,len);
 			case Reset.CMD_RESET:

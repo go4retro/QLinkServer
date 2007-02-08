@@ -23,25 +23,18 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.CRCException;
-
-
-public class RequestToObserve extends AbstractAction {
-	private String _sHandle;
-
-	public static final String MNEMONIC = "J1";
-	/**
-	 * @param data
-	 * @param start
-	 * @param len
-	 * @throws CRCException
-	 */
-	public RequestToObserve(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
-		_sHandle=getString(data,start+11,len-11);
+public class StartObservedGame extends AbstractAction {
+	private int _iSeat;
+	public StartObservedGame(int seat) {
+		super("JB");
+		_iSeat=seat;
 	}
-	
-	public String getHandle() {
-		return _sHandle;
+	public byte[] getBytes() {
+		byte[] data=new byte[10+1];
+		data[10]=(byte)(_iSeat+1);
+		if(data[10]>=13)
+			data[10]++;
+		finalizeCmd(data);
+		return data;
 	}
 }

@@ -18,30 +18,20 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Jul 22, 2005
+	Created on Sep 21, 2005
 	
  */
-package org.jbrain.qlink.cmd.action;
-
-import org.jbrain.qlink.cmd.CRCException;
+package org.jbrain.qlink.chat;
 
 
-public class RequestToObserve extends AbstractAction {
-	private String _sHandle;
+public class GameStart implements GameRecord {
+	private byte[] _order;
 
-	public static final String MNEMONIC = "J1";
 	/**
-	 * @param data
-	 * @param start
-	 * @param len
-	 * @throws CRCException
+	 * @param playOrder
 	 */
-	public RequestToObserve(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
-		_sHandle=getString(data,start+11,len-11);
+	public GameStart(byte[] order) {
+		_order=order;
 	}
-	
-	public String getHandle() {
-		return _sHandle;
-	}
+
 }

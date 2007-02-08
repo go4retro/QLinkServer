@@ -23,25 +23,35 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.CRCException;
+public class LoadObservedGame extends AbstractAction {
+	private byte[] _seats;
+	private String _sCode;
+	private int _iID;
 
-
-public class RequestToObserve extends AbstractAction {
-	private String _sHandle;
-
-	public static final String MNEMONIC = "J1";
-	/**
-	 * @param data
-	 * @param start
-	 * @param len
-	 * @throws CRCException
-	 */
-	public RequestToObserve(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
-		_sHandle=getString(data,start+11,len-11);
+	public LoadObservedGame(int id, String code, byte[] seats) {
+		super("J3");
+		_iID=id;
+		_sCode=code;
+		_seats=seats;
 	}
 	
-	public String getHandle() {
-		return _sHandle;
-	}
+	public byte[] getBytes() {
+		byte[] b=getBytes(_sCode);
+		byte[] data=new byte[10 + 3 + b.length +  _seats.length];
+		data[10]=(byte)_iID;
+		System.arraycopy(b,0,data,11,b.length);
+		int pos=11+b.length;
+		data[pos++]=(byte)0x90;
+		data[pos++]=(byte)_seats.length;
+		System.arraycopy(_seats,0,data,pos,_seats.length);
+		// add 1 or 2 to seatnumbers
+		for(int i=0;i<_seats.length;i++) {
+			data[pos+i]++;
+			if(data[pos+i]>=13)
+				data[pos+i]++;
+		}
+		finalizeCmd(data);
+		return data;
+	}	
+
 }

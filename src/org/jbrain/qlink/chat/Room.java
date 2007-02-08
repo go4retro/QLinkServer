@@ -89,4 +89,11 @@ public interface Room {
 	 */
 	public String getInfo();
 
+
+	/**
+	 * @param handle
+	 * @return
+	 */
+	public abstract ObservedGame observeGame(String handle);
+
 }

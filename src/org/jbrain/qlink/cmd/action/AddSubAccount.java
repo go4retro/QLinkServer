@@ -23,26 +23,9 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-public class SendAccountNumber extends AbstractAction {
+public class AddSubAccount extends AbstractAddAccount {
 
-	private String _sHandle;
-	private String _sAccount;
-	
-	public SendAccountNumber(String account, String handle) {
-		super("D4");
-		if(account==null || account.length()!=10)
-			throw new IllegalArgumentException("Account length != 10");
-		_sAccount=account;
-		_sHandle=handle;
-	}
-	
-	public byte[] getBytes() {
-		byte[] b1=getBytes(_sAccount);
-		byte[] b2=getBytes(_sHandle);
-		byte[] data=new byte[10+10 + b2.length];
-		System.arraycopy(b1,0,data,10,10);
-		System.arraycopy(b2,0,data,20,b2.length);
-		finalizeCmd(data);
-		return data;
+	public AddSubAccount(String account, String handle) {
+		super("BT",account,handle);
 	}	
 }

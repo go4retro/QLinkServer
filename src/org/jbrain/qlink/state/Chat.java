@@ -37,30 +37,10 @@ import org.jbrain.qlink.util.QuotedStringTokenizer;
 public class Chat extends AbstractState {
 	private static Logger _log=Logger.getLogger(Chat.class);
 
-	/**
-	 * 
-	 * @uml.property name="_room"
-	 * @uml.associationEnd multiplicity="(0 1)"
-	 */
 	private Room _room;
-
 	private int _iSeat;
-
-	/**
-	 * 
-	 * @uml.property name="_listener"
-	 * @uml.associationEnd inverse="this$0:org.jbrain.qlink.state.Chat$QueuedChatEventListener"
-	 * multiplicity="(0 1)"
-	 */
 	private QueuedChatEventListener _listener;
-
-	/**
-	 * 
-	 * @uml.property name="_rooms"
-	 * @uml.associationEnd multiplicity="(0 -1)"
-	 */
 	private RoomInfo[] _rooms;
-
 	private int _roomPos;
 	private ArrayList _alQuestion=new ArrayList();
 	
@@ -294,7 +274,6 @@ public class Chat extends AbstractState {
 					_server.send(new UserInPrivateRoom());
 				}
 			}
-			
 		} else if(a instanceof LeaveChat) {
 			// we need to ack this.
 			_log.debug("Leaving chat");
@@ -309,17 +288,13 @@ public class Chat extends AbstractState {
 			//_server.send(new DeIgnoreUser());
 		} else if(a instanceof EnterAuditorium) {
 			enterAuditorium();
-		} else if(a instanceof EnterBoxOffice) {
-			// this is not correct...
-			enterAuditorium();
 		} else if(a instanceof RequestToObserve) {
 			String handle=((RequestToObserve)a).getHandle();
 			_log.debug("User requesting to observe " + handle + "'s game.");
-			//
-			//_server.sendToUser(new StartGame("GAME",seats));
-			//_server.send(new ObserveGame());
-		} else if(a instanceof SpeakerInfo) {
-			sendSpeakerInfo();
+			// we should ask permission, but no matter
+			String name=((RequestToObserve)a).getHandle();
+			state=new ObserveGame(_server, _room, name);
+			state.activate();
 		} else if(a instanceof MR) {
 			// we get this after coming back from game
 			SeatInfo[] seats;
@@ -352,6 +327,21 @@ public class Chat extends AbstractState {
 		} else if(a instanceof FindMorePartners) {
 			_log.debug("System needs to find  " + ((FindMorePartners)a).getNumberToFind());
 			_server.send(new FindPartnersAck());
+		} else if(a instanceof EnterBoxOffice) {
+			// this is not correct...
+			enterRoom("BoxOffice",false);
+    		_server.send(new AuditoriumText("Heading",false));
+    		_server.send(new AuditoriumText("    Item 1",false));
+    		_server.send(new AuditoriumText("    Item 2",false));
+    		_server.send(new AuditoriumText("    Item 3",true));
+		} else if(a instanceof MakeReservation) {
+			_log.debug("User made reservation for event: " + ((MakeReservation)a).getID());
+    		_server.send(new AuditoriumText("This is not implements yet",true));
+		} else if(a instanceof CancelReservation) {
+			_log.debug("User canceled reservation for event: " + ((CancelReservation)a).getID());
+    		_server.send(new AuditoriumText("This is not implements yet",true));
+		} else if(a instanceof EventInfo) {
+			sendEventInfo();
 		}
 		if(!rc)
 			rc=super.execute(a);
@@ -391,30 +381,6 @@ public class Chat extends AbstractState {
 						_server.sendOLM(name,olm);
 					}
 				}
-			} else if(cmd.startsWith("joi")) {
-				// join a new room;
-				if(st.hasMoreTokens()) {
-					name=st.nextToken(" ");
-					if(name != null) {
-						if(_log.isDebugEnabled())
-							_log.debug("joining public room: " + name);
-						enterRoom(name,true);
-					}
-				} else {
-					error ="No room specified";
-				}
-			} else if(cmd.startsWith("pjoi")) {
-				// join a new room;
-				if(st.hasMoreTokens()) {
-					name=st.nextToken(" ");
-					if(name != null) {
-						if(_log.isDebugEnabled())
-							_log.debug("joining private room: " + name);
-						enterRoom(name,false);
-					}
-				} else {
-					error ="No room specified";
-				}
 			} else
 				_room.say(text);
 			// did we have an error.
@@ -437,7 +403,7 @@ public class Chat extends AbstractState {
 	/**
 	 * 
 	 */
-	private void sendSpeakerInfo() throws IOException {
+	private void sendEventInfo() throws IOException {
 		// TODO Need to modify this to send speaker information
 		sendAuditoriumText();
 	}

@@ -18,30 +18,26 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Jul 22, 2005
+	Created on Jul 29, 2005
 	
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.CRCException;
 
+public class AddAccountInSlot extends AbstractAction {
 
-public class RequestToObserve extends AbstractAction {
-	private String _sHandle;
-
-	public static final String MNEMONIC = "J1";
-	/**
-	 * @param data
-	 * @param start
-	 * @param len
-	 * @throws CRCException
-	 */
-	public RequestToObserve(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
-		_sHandle=getString(data,start+11,len-11);
+	private int _iSlot;
+	public AddAccountInSlot(int slot) {
+		super("B7");
+		if(slot<1 || slot >4)
+			throw new IllegalArgumentException("Slot must be between 1 and 4");
+		_iSlot=slot;
 	}
+	public byte[] getBytes() {
+		byte[] data=new byte[11];
+		data[10] = (byte)(0x81 + _iSlot);
+		finalizeCmd(data);
+		return data;
+	}	
 	
-	public String getHandle() {
-		return _sHandle;
-	}
 }

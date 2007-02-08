@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.Vector;
 
 import org.apache.log4j.Logger;
 
@@ -89,6 +90,7 @@ public class GameDelegate {
 	private ArrayList _alAbstainList = new ArrayList();
 
 	private boolean _bActive=true;
+	private Vector _vGameLog=new Vector();
 
 	/**
 	 * @param name
@@ -209,11 +211,13 @@ public class GameDelegate {
 	protected void processEvent(RoomEvent event) {
 		synchronized(_listeners) {
 			if(event instanceof GameCommEvent) 
-				processGameEvent((GameCommEvent)event);
+				processGameCommEvent((GameCommEvent)event);
 			else if(event instanceof GameEvent) 
-				processGameLoadEvent((GameEvent)event);
+				processGameEvent((GameEvent)event);
 			else if(event instanceof GameTerminationEvent) 
 				processGameTerminationEvent((GameTerminationEvent)event);
+			else if(event instanceof StartGameEvent) 
+				processStartGameEvent((StartGameEvent)event);
 		}
 	}
 	
@@ -224,7 +228,7 @@ public class GameDelegate {
 	/**
 	 * @param event
 	 */
-	protected void processGameEvent(GameCommEvent event) {
+	protected void processGameCommEvent(GameCommEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			for(int i=0,size=_listeners.size();i<size;i++) {
 				((GameEventListener)_listeners.get(i)).gameSent(event);
@@ -232,7 +236,15 @@ public class GameDelegate {
 		}
 	}
 
-	protected void processGameLoadEvent(GameEvent event) {
+	protected void processStartGameEvent(StartGameEvent event) {
+		if(event != null && _listeners.size() > 0) {
+			for(int i=0,size=_listeners.size();i<size;i++) {
+				((GameEventListener)_listeners.get(i)).gameStarted(event);
+			}
+		}
+	}
+
+	protected void processGameEvent(GameEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			for(int i=0,size=_listeners.size();i<size;i++) {
 				((GameEventListener)_listeners.get(i)).eventOccurred(event);
@@ -306,7 +318,9 @@ public class GameDelegate {
 	 * @param text
 	 */
 	public void send(int seat, String text) {
-		processEvent(new GameCommEvent(this,seat,_room.getSeatInfo(seat).getHandle(),text));
+		GameCommEvent event=new GameCommEvent(this,seat,_room.getSeatInfo(seat).getHandle(),text);
+		record(event);
+		processEvent(event);
 	}
 
 	/**
@@ -403,12 +417,25 @@ public class GameDelegate {
 		SeatInfo info= _room.getSeatInfo(seat);
 		// we need to re-order the players to have this person first.
 		// for now, let's just shift everyone up by 1
-		int i=1;
-		while(_seats[i]!=info.getSeat() && i<_seats.length) {
-			_seats[i] = _seats[i-1];
+		int i=_seats.length-1;
+		while(i>0 && _seats[i]!=seat) {
+			i--;
 		}
-		_seats[0]=(byte)info.getSeat();
-		processEvent(new GameEvent(this,GameEvent.RESTART_GAME, seat, info.getHandle()));
+		while(i>0) {
+			_seats[i] = _seats[i-1];
+			i--;
+		}
+		_seats[0]=(byte)seat;
+		StartGameEvent event=new StartGameEvent(this,seat,info.getHandle(),getPlayOrder());
+		record(event);
+		processEvent(event);
+	}
+
+	/**
+	 * @param object
+	 */
+	private void record(RoomEvent event) {
+		_vGameLog.add(event);
 	}
 
 	/**
@@ -423,8 +450,9 @@ public class GameDelegate {
 	 */
 	public void start(int seat) {
 		SeatInfo info= _room.getSeatInfo(seat);
-		processEvent(new GameEvent(this,GameEvent.START_GAME, seat, info.getHandle()));
-		
+		StartGameEvent event=new StartGameEvent(this,seat,info.getHandle(),getPlayOrder());
+		record(event);
+		processEvent(event);
 	}
 
 	/**
@@ -435,5 +463,9 @@ public class GameDelegate {
 		addDecline(info);
 		processEvent(new GameEvent(this,GameEvent.DECLINE_RESTART, seat, info.getHandle()));
 		
+	}
+	
+	public List getGameLog() {
+		return Collections.unmodifiableList(_vGameLog);
 	}
 }

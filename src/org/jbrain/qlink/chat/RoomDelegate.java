@@ -142,7 +142,7 @@ class RoomDelegate {
 						if(_users[i]==null) {
 							user=new SeatInfo(handle,i);
 							_users[i]=user;
-							_htUsers.put(handle,user);
+							_htUsers.put(handle.toLowerCase(),user);
 							processEvent(new JoinEvent(this,JoinEvent.EVENT_JOIN,i,user.getHandle()));
 							return i;
 						}
@@ -151,7 +151,7 @@ class RoomDelegate {
 				return -1;
 			} else {
 				if(_log.isDebugEnabled())
-					_log.debug("'" + handle + "' is already in room: " + _sName);
+					_log.warn("'" + handle + "' is already in room: " + _sName);
 				return user.getSeat();
 			}
 		}
@@ -176,7 +176,7 @@ class RoomDelegate {
 			if(user!=null) {
 				if(_log.isDebugEnabled())
 					_log.debug("Removing '" + user.getHandle() + "' from room: " + _sName);
-				_htUsers.remove(user.getHandle());
+				_htUsers.remove(user.getHandle().toLowerCase());
 				_users[seat]=null;
 				// are they in a game?
 				if(_userGame[seat]!= null) {
@@ -409,7 +409,7 @@ class RoomDelegate {
 	
 	public SeatInfo getSeatInfo(String handle) {
 		// synchronized on the table
-		return (SeatInfo)_htUsers.get(handle);
+		return (SeatInfo)_htUsers.get(handle.toLowerCase());
 	}
 
 	/**
@@ -479,6 +479,19 @@ class RoomDelegate {
 	 */
 	protected void sendSystemMessage(String name, int seat, List l) {
 		processEvent(new SystemMessageEvent(this,name,seat,(String[])l.toArray(new String[0])));
+	}
+
+	/**
+	 * @return
+	 */
+	public ObservedGame observeGame(String handle) {
+		SeatInfo info=getSeatInfo(handle);
+		if(info!=null) {
+			GameDelegate game=_userGame[info.getSeat()];
+			if(game!=null)
+				return new ObservedGame(game);
+		}
+		return null;
 	}
 
 

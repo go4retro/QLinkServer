@@ -411,6 +411,16 @@ public class DepartmentMenu extends AbstractState {
 		        	case MenuItem.DOWNLOAD:
 		        		_log.debug("Item is a download, display text");
 		        		displayFileInfo(id);
+		        		break;
+	        		case MenuItem.UNKNOWN_83:
+	        		case MenuItem.UNKNOWN_84:
+	        		case MenuItem.UNKNOWN_89:
+	        		case MenuItem.UNKNOWN_8C:
+	        			_log.debug("Item is a dialog, display it");
+	        			QState state=new JimState(_server);
+	        			state.activate();
+	        		
+		        		break;
 	        		case MenuItem.GATEWAY:
 	        			_log.debug("Item is a gateway, connect to it");
 	        			connectToGateway(id);

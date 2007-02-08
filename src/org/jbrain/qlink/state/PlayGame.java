@@ -193,10 +193,6 @@ public class PlayGame extends AbstractPhaseState {
 						}
 					}
 					break;
-				case GameEvent.START_GAME :
-					setPhase(PHASE_PLAYING);
-					send(new StartGame("GAME", _game.getPlayOrder()));
-					break;
 				case GameEvent.REQUEST_RESTART :
 					if (!_bRequestRestart) {
 						_log.debug(event.getHandle()
@@ -218,12 +214,13 @@ public class PlayGame extends AbstractPhaseState {
 						send(new DeclineRestart());
 					}
 					break;
-				case GameEvent.RESTART_GAME :
-					_log.debug("Game is restarting");
-					send(new StartGame("GAME", _game.getPlayOrder()));
-					setPhase(PHASE_PLAYING);
-					break;
 			}
+		}
+
+		public void gameStarted(StartGameEvent event) {
+			_log.debug("Game is (re)starting");
+			setPhase(PHASE_PLAYING);
+			send(new StartGame("GAME", event.getPlayOrder()));
 		}
 
 		public void gameTerminated(GameTerminationEvent event) {
@@ -259,6 +256,7 @@ public class PlayGame extends AbstractPhaseState {
 			_game.leave();
 		}
 		_server.setState(_intState);
+		_server.enableOLMs(true);
 	}
 
 	public PlayGame(QServer server, Room room, int id, String name, String type, boolean bSystemPickOrder) {
@@ -272,6 +270,7 @@ public class PlayGame extends AbstractPhaseState {
 }
 	
 	public void activate() throws IOException {
+		_server.enableOLMs(false);
 		if(!_bInvited) {
 			_log.debug("User request to play a game");
 			_game=_room.createGame(_iGameID,_sName,_sType,_bSystemPickOrder);
@@ -427,6 +426,7 @@ public class PlayGame extends AbstractPhaseState {
 	public void terminate() {
 		// go ahead and leave and remove the listener
 		restoreState();
+		_server.enableOLMs(false);
 		if(_timerTask!=null)
 			_timerTask.run();
 		if(!_bInvited && _game.isActive()) {

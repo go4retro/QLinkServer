@@ -78,5 +78,4 @@ public class NormalRoom extends AbstractRoom{
 	public String getInfo() {
 		return _room.getInfo();
 	}
-
 }

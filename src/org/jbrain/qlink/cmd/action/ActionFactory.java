@@ -142,8 +142,8 @@ public class ActionFactory {
 		if(action.equals(OLMCancelled.MNEMONIC)) {
 			return new OLMCancelled(b,start,len);
 		}
-		if(action.equals(SpeakerInfo.MNEMONIC)) {
-			return new SpeakerInfo(b,start,len);
+		if(action.equals(EventInfo.MNEMONIC)) {
+			return new EventInfo(b,start,len);
 		}
 		if(action.equals(GatewayRecv.MNEMONIC)) {
 			return new GatewayRecv(b,start,len);
@@ -262,7 +262,15 @@ public class ActionFactory {
 		if(action.equals(FindMorePartners.MNEMONIC)) {
 			return new FindMorePartners(b,start,len);
 		}
-		
+		if(action.equals(PlayBackMovesAck.MNEMONIC)) {
+			return new PlayBackMovesAck(b,start,len);
+		}
+		if(action.equals(MakeReservation.MNEMONIC)) {
+			return new MakeReservation(b,start,len);
+		}
+		if(action.equals(CancelReservation.MNEMONIC)) {
+			return new CancelReservation(b,start,len);
+		}
 		return new UnknownAction(b,start,len);
 	}
 }

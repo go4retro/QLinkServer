@@ -25,23 +25,16 @@ package org.jbrain.qlink.cmd.action;
 
 import org.jbrain.qlink.cmd.CRCException;
 
-
-public class RequestToObserve extends AbstractAction {
-	private String _sHandle;
-
-	public static final String MNEMONIC = "J1";
+public class CancelReservation extends AbstractIDAction {
+	public static final String MNEMONIC = "cC";
 	/**
 	 * @param data
 	 * @param start
 	 * @param len
 	 * @throws CRCException
 	 */
-	public RequestToObserve(byte[] data, int start, int len) throws CRCException {
+	public CancelReservation(byte[] data, int start, int len) throws CRCException {
 		super(data, start, len);
-		_sHandle=getString(data,start+11,len-11);
-	}
-	
-	public String getHandle() {
-		return _sHandle;
+		
 	}
 }

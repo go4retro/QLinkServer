@@ -384,4 +384,10 @@ class AuditoriumDelegate extends RoomDelegate {
 	public void removeViewer(String handle) {
 		_alViewers.remove(handle);
 	}
+
+	public ObservedGame observeGame(String handle) {
+		return null;
+	}
+	
+
 }

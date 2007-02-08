@@ -184,4 +184,8 @@ public abstract class AbstractRoom implements Room {
 		return _room.getGameInfoList();
 	}
 	
+	public ObservedGame observeGame(String handle) {
+		return _room.observeGame(handle);
+	}
+	
 }

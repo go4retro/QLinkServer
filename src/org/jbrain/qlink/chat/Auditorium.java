@@ -37,7 +37,7 @@ public class Auditorium extends AbstractRoom {
 	}
 
 	public void say(String text) {
-		String[] s=new String[0];
+		String[] s=new String[1];
 		s[0]=text;
 		say(s);
 	}

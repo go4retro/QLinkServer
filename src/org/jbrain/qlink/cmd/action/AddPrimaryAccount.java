@@ -23,25 +23,9 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.CRCException;
+public class AddPrimaryAccount extends AbstractAddAccount {
 
-
-public class RequestToObserve extends AbstractAction {
-	private String _sHandle;
-
-	public static final String MNEMONIC = "J1";
-	/**
-	 * @param data
-	 * @param start
-	 * @param len
-	 * @throws CRCException
-	 */
-	public RequestToObserve(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
-		_sHandle=getString(data,start+11,len-11);
-	}
-	
-	public String getHandle() {
-		return _sHandle;
-	}
+	public AddPrimaryAccount(String account, String handle) {
+		super("D4",account,handle);
+	}	
 }

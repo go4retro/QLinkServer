@@ -23,25 +23,35 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.CRCException;
+import java.util.Arrays;
 
+public abstract class AbstractAddAccount extends AbstractAction {
 
-public class RequestToObserve extends AbstractAction {
 	private String _sHandle;
-
-	public static final String MNEMONIC = "J1";
-	/**
-	 * @param data
-	 * @param start
-	 * @param len
-	 * @throws CRCException
-	 */
-	public RequestToObserve(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
-		_sHandle=getString(data,start+11,len-11);
+	private String _sAccount;
+	
+	public AbstractAddAccount(String mnemonic, String account, String handle) {
+		super(mnemonic);
+		if(account==null || account.length()!=10)
+			throw new IllegalArgumentException("Account length != 10");
+		_sAccount=account;
+		if(handle==null)
+			throw new IllegalArgumentException("Handle is null");
+		else if(handle.length()>10)
+			throw new IllegalArgumentException("Handle length > 10");
+		else if(handle.length()<3)
+			throw new IllegalArgumentException("Handle length < 3");
+		_sHandle=handle;
 	}
 	
-	public String getHandle() {
-		return _sHandle;
-	}
+	public byte[] getBytes() {
+		byte[] b1=getBytes(_sAccount);
+		byte[] b2=getBytes(_sHandle);
+		byte[] data=new byte[10+10 + 10];
+		Arrays.fill(data,(byte)0x20);
+		System.arraycopy(b1,0,data,10,10);
+		System.arraycopy(b2,0,data,20,b2.length);
+		finalizeCmd(data);
+		return data;
+	}	
 }

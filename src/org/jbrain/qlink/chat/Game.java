@@ -201,4 +201,18 @@ public class Game {
 		
 	}
 
+	/**
+	 * @return
+	 */
+	public String getName() {
+		return _game.getName();
+	}
+
+	/**
+	 * @return
+	 */
+	public int getID() {
+		return _game.getID();
+	}
+
 }

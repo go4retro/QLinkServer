@@ -23,26 +23,9 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.CRCException;
+public class NoMoreMoves extends AbstractAction {
 
-public class SpeakerInfo extends AbstractAction {
-	public static final int SPEAKER_AUDITORIUM = 0xfa;
-	private int _iType;
-
-	public static final String MNEMONIC = "MS";
-	/**
-	 * @param data
-	 * @param start
-	 * @param len
-	 * @throws CRCException
-	 */
-	public SpeakerInfo(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
-		_iType=data[start+11];
-		
-	}
-	
-	public int getType() {
-		return _iType;
+	public NoMoreMoves() {
+		super("JE");
 	}
 }

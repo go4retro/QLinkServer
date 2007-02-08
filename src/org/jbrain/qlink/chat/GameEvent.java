@@ -38,8 +38,6 @@ public class GameEvent extends EventObject implements RoomEvent {
 	public static final int DECLINE_RESTART=6;
 	public static final int REQUEST_LOAD = 7;
 	public static final int LEAVE_GAME = 8;
-	public static final int RESTART_GAME = 10;
-	public static final int START_GAME = 11;
 
 	public GameEvent(Object obj,int type, int seat, String handle) {
 		super(obj);
