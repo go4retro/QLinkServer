@@ -42,14 +42,8 @@ public class Auditorium extends AbstractRoom {
 		say(s);
 	}
 	
-	protected void processMessageEvent(MessageEvent event) {
-		// we don't have these events in the Auditorium
-	}
-
 	public synchronized void addEventListener(RoomEventListener listener) {
 		super.addEventListener(listener);
-		// the this object will be off for this..
-		processEvent(new QuestionStateEvent(this,(((AuditoriumDelegate)_room).isAcceptingQuestions()?QuestionStateEvent.ACCEPTING_QUESTIONS:QuestionStateEvent.NOT_ACCEPTING_QUESTIONS)));
 	}
 
 	/* (non-Javadoc)
@@ -66,4 +60,23 @@ public class Auditorium extends AbstractRoom {
 		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.Room#getInfo()
+	 */
+	public String getInfo() {
+		return _room.getInfo();
+	}
+
+	/**
+	 * @return
+	 */
+	public boolean isAcceptingQuestions() {
+		return ((AuditoriumDelegate)_room).isAcceptingQuestions();
+	}
+
+	protected void processSystemMessageEvent(SystemMessageEvent event) {
+		// is it to us or broadcast?
+		if(event.getRecipientSeat()==SystemMessageEvent.SEAT_BROADCAST)
+			super.processSystemMessageEvent(event);
+	}
 }

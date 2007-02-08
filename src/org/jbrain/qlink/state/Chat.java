@@ -24,10 +24,6 @@
 package org.jbrain.qlink.state;
 
 import java.io.*;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +32,7 @@ import org.jbrain.qlink.*;
 import org.jbrain.qlink.chat.*;
 import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.text.TextFormatter;
+import org.jbrain.qlink.util.QuotedStringTokenizer;
 
 public class Chat extends AbstractState {
 	private static Logger _log=Logger.getLogger(Chat.class);
@@ -63,9 +60,7 @@ public class Chat extends AbstractState {
 			_bSuspend=false;
 			while(_alQueue.size()>0) {
 				e=(RoomEvent)_alQueue.remove(0);
-				if(e instanceof MessageEvent)
-					userSaid((MessageEvent)e);
-				else if(e instanceof ChatEvent)
+				if(e instanceof ChatEvent)
 					userSaid((ChatEvent)e);
 				else if(e instanceof SystemMessageEvent)
 					systemSent((SystemMessageEvent)e);
@@ -95,7 +90,7 @@ public class Chat extends AbstractState {
 					}
 				} else {
 					if(_log.isDebugEnabled())
-						_log.debug("User '" + event.getOriginatingName() + "' says: '" + event.getText() +"'");
+						_log.debug(event.getOriginatingName() + " says: '" + event.getText() +"'");
 					try {
 						_server.send(new AnonChatSend(event.getOriginatingName(),event.getText()));
 					} catch (IOException e) {
@@ -105,41 +100,6 @@ public class Chat extends AbstractState {
 					}
 				}
 			
-		}
-
-		/* (non-Javadoc)
-		 * @see org.jbrain.qlink.chat.RoomEventListener#userSaid(org.jbrain.qlink.chat.MessageEvent)
-		 */
-		public void userSaid(MessageEvent event) {
-			String error=null;
-			//this is always from us, so just send it as an OLM.
-			if(_bSuspend)
-				_alQueue.add(event);
-			else {
-				if(_log.isDebugEnabled())
-					_log.debug("Seat: " + event.getOriginatingSeat() + " sent private message: '" + event.getMessage() +"' to " + event.getRecipientName());
-				if(_server.getIDByName(event.getRecipientName())<0)
-					error="User not valid";
-				else if(!_server.isUserOnline(event.getRecipientName()))
-					error="User not online";
-				else if(!_server.canReceiveOLMs(event.getRecipientName())) {
-					error="User cannot receive OLMs";
-				} else {
-					String[] msg=new String[2];
-					msg[0]="Message From:  " + _server.getHandle();
-					msg[1]=event.getMessage();
-					_server.sendOLM(event.getRecipientName(),msg);
-				} 
-				if(error!=null) {
-					try {
-						_server.send(new AnonChatSend("*ERROR*",error));
-					} catch (IOException e) {
-						// leave chat, and shut down.
-						_log.error("Link error",e);
-						_server.terminate();
-					}
-				}
-			}
 		}
 
 		public void userJoined(JoinEvent event) {
@@ -178,14 +138,13 @@ public class Chat extends AbstractState {
 		public void systemSent(SystemMessageEvent event) {
 			// send ourselves an OLM, as we requested it.
 			String[] msg=event.getMessage();
-			_server.sendOLM(_server.getHandle(),msg);
+			_server.sendOLM(true,msg);
 			
 		}
 
 		public void acceptingQuestions(QuestionStateEvent event) {
 			try {
 				_server.send(new AcceptingQuestions());
-				_server.send(new AnonChatSend("","Now accepting Questions"));
 			} catch (IOException e) {
 				// leave chat, and shut down.
 				_log.error("Link error",e);
@@ -196,7 +155,6 @@ public class Chat extends AbstractState {
 		public void rejectingQuestions(QuestionStateEvent event) {
 			try {
 				_server.send(new RejectingQuestions());
-				_server.send(new AnonChatSend("","Question session closed"));
 			} catch (IOException e) {
 				// leave chat, and shut down.
 				_log.error("Link error",e);
@@ -236,8 +194,8 @@ public class Chat extends AbstractState {
 		QState state;
 		
 		if(a instanceof ChatSay) {
-			_log.debug(_server.getHandle() + " says'" + ((ChatSay)a).getText() + "'");
-			_room.say(((ChatSay)a).getText());
+			_log.debug(_server.getHandle() + " says: '" + ((ChatSay)a).getText() + "'");
+			process(((ChatSay)a).getText());
 			rc=true;
 		} else if(a instanceof RequestGame) {
 			int id=((RequestGame)a).getID();
@@ -353,12 +311,83 @@ public class Chat extends AbstractState {
 			_alQuestion.add(((QuestionNextLine)a).getData());
 		} else if(a instanceof QuestionLastLine) {
 			_alQuestion.add(((QuestionLastLine)a).getData());
+			// we bypass the process function for this.
 			_room.say((String[])_alQuestion.toArray(new String[_alQuestion.size()]));
 			_alQuestion.clear();
 		}
 		if(!rc)
 			rc=super.execute(a);
 		return rc;
+	}
+
+	/**
+	 * @param text
+	 */
+	private void process(String text) throws IOException {
+		if(text.startsWith("//")) {
+			// do //msg and //join here.
+			String[] olm;
+			String name=null,msg=null, error=null;
+			QuotedStringTokenizer st=new QuotedStringTokenizer(text);
+			String cmd=st.nextToken(" ").toLowerCase();
+			int pos=0;
+			if(cmd.startsWith("//msg")) {
+				// Send someone a private msg;
+				if(st.hasMoreTokens())
+					name=st.nextToken(" ");
+				if(st.hasMoreTokens())
+					msg=st.nextToken("\n");
+				if(name != null && msg!= null) {
+					if(_log.isDebugEnabled())
+						_log.debug("sending private message: '" + msg +"' to " + name);
+					if(_server.getIDByName(name)<0)
+						error="User not valid";
+					else if(!_server.isUserOnline(name))
+						error="User not online";
+					else if(!_server.canReceiveOLMs(name)) {
+						error="User cannot receive OLMs";
+					} else {
+						olm=new String[2];
+						olm[0]="Message From:  " + _server.getHandle();
+						olm[1]=msg;
+						_server.sendOLM(name,olm);
+					}
+				}
+			} else if(cmd.startsWith("//joi")) {
+				// join a new room;
+				if(st.hasMoreTokens()) {
+					name=st.nextToken(" ");
+					if(name != null) {
+						if(_log.isDebugEnabled())
+							_log.debug("joining public room: " + name);
+						enterRoom(name,true);
+					}
+				} else {
+					error ="No room specified";
+				}
+			} else if(cmd.startsWith("//pjoi")) {
+				// join a new room;
+				if(st.hasMoreTokens()) {
+					name=st.nextToken(" ");
+					if(name != null) {
+						if(_log.isDebugEnabled())
+							_log.debug("joining private room: " + name);
+						enterRoom(name,false);
+					}
+				} else {
+					error ="No room specified";
+				}
+			} else
+				_room.say(text);
+			// did we have an error.
+			if(error!=null) {
+				olm=new String[1];
+				olm[0]="Error: " + error;
+				_server.sendOLM(_server.getHandle(),olm);
+			}
+		} else {
+			_room.say(text);
+		}
 	}
 
 	public void terminate() {
@@ -433,11 +462,20 @@ public class Chat extends AbstractState {
 			_log.debug("Getting seat information");
 			seats=_room.getSeatInfoList();
 		}
-		showRoom(seats,true);
+		_server.send(new EnterPublicRoom(_room.getName()));
+		_log.debug("Sending seat information");
+		for(int i=0,size=seats.length;i<size;i++) {
+			user=seats[i];
+			_server.send(new CL(user.getSeat(),user.getHandle()));
+		}
 		// put us at end.
 		_server.send(new CE(22,_server.getHandle()));
 		_listener.resume();
 		sendAuditoriumText();
+		if(((Auditorium)_room).isAcceptingQuestions())
+			_server.send(new AcceptingQuestions());
+		else
+			_server.send(new RejectingQuestions());
 		
 	}
 
@@ -487,43 +525,17 @@ public class Chat extends AbstractState {
 	 * 
 	 */
 	private void sendAuditoriumText() throws IOException {
-	    Connection conn=null;
-	    Statement stmt = null;
-	    ResultSet rs = null;
-	    
-	    try {
-	    	conn=_server.getDBConnection();
-	        stmt = conn.createStatement();
-	        _log.debug("Reading auditorium text");
-	    	rs=stmt.executeQuery("SELECT text from auditorium_text WHERE start_date<now() AND end_date>now()");
-	    	if(rs.next()) {
-	    		_log.debug("Defining AuditoriumState text");
-	    		TextFormatter tf=new TextFormatter();
-	    		do {
-	        		tf.add(rs.getString("text"));
-	    		} while (rs.next());
-	        	_log.info("Sending AuditoriumState Text");
-	        	List l=tf.getList();
-	        	int size=Math.min(l.size(),11);
-	        	for(int i=0;i<size;i++) {
-	        		_server.send(new AuditoriumText((String)l.get(i),i+1==size));
-	        	}
-	    	}
-	    } catch (SQLException e) {
-	    	_log.error("SQL Exception",e);
-	    } finally {
-	    	closeRS(rs);
-	        if (stmt != null) {
-	            try {
-	                stmt.close();
-	            } catch (SQLException sqlEx) { }// ignore }
-	            stmt = null;
-	        }
-	        if(conn!=null) 
-	        	try {
-	        		conn.close();
-	        	} catch (SQLException e) {	}
-	    }
+		_log.debug("Defining Auditorium text");
+		String text=_room.getInfo();
+		TextFormatter tf=new TextFormatter();
+		tf.add(text);
+		tf.add("\n     <PRESS F5 TO CONTINUE>");
+    	_log.info("Sending Auditorium Text");
+    	List l=tf.getList();
+    	int size=l.size();
+    	for(int i=0;i<size;i++) {
+    		_server.send(new AuditoriumText((String)l.get(i),i+1==size));
+    	}
 	}
 
 }

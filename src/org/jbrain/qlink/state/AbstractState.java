@@ -33,21 +33,16 @@ import java.util.*;
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.QServer;
 import org.jbrain.qlink.cmd.action.*;
+import org.jbrain.qlink.db.DBUtils;
 
 
 public abstract class AbstractState implements QState {
 	private static Logger _log=Logger.getLogger(AbstractState.class);
-	public static final int PHASE_INITIAL=1;
+	//public static final int PHASE_INITIAL=1;
 	protected QServer _server;
-	private int _iPhase;
 
-	public AbstractState(QServer server, int phase) {
-		_server=server;
-		_iPhase=phase;
-	}
-	
 	public AbstractState(QServer server) {
-		this(server,PHASE_INITIAL);
+		_server=server;
 	}
 	
 	public void activate() throws IOException {
@@ -96,13 +91,15 @@ public abstract class AbstractState implements QState {
 			rc=true;
 		} else if(a instanceof ReadOLM) {
 			String id=((ReadOLM)a).getData();
+			boolean bSysMsg=id.startsWith(QServer.MESSAGE_SYSTEM);
 			// system OKs reading an OLM
 			String[] l=_server.getOLM(id);
 			int size=l.length;
 			for(int i=0;i<size;i++) {
-				_server.send(new OLMText(id,l[i],false));
+				_server.send(new OLMText(id,l[i],bSysMsg && (i+1==size)));
 			}
-			_server.send(new OLMText(id,"End of Message - Press F5 to cancel",true));
+			if(!bSysMsg)
+				_server.send(new OLMText(id,"End of Message - Press F5 to cancel",true));
 			rc=true;
 		}
 		return rc;
@@ -117,7 +114,7 @@ public abstract class AbstractState implements QState {
         ResultSet rs = null;
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Checking for email to " + _server.getHandle());
             rs=stmt.executeQuery("SELECT email_id FROM email WHERE unread='Y' AND recipient_id=" + _server.getID() + " LIMIT 1");
@@ -126,47 +123,17 @@ public abstract class AbstractState implements QState {
         	_log.error("SQL Exception",e);
         	return false;
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-                stmt = null;
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 
-	/**
-	 * @param rs
-	 */
-	protected void closeRS(ResultSet rs) {
-        if (rs != null) {
-            try {
-                rs.close();
-            } catch (SQLException sqlEx) {} // ignore }
-
-            rs = null;
-        }
-	}
-	
-	protected int getPhase() {
-		return _iPhase;
-	}
-	
-	protected void setPhase(int phase) {
-		_iPhase=phase;
-	}
-	
 	public void terminate() {
 	}
 	
 	public String getName() {
-		// cheesy, but it should work.
-		return this.getClass().getConstructors()[0].getName();
+		return this.getClass().getName();
 	}
 
 	

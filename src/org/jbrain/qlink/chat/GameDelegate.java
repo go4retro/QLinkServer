@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
-import org.jbrain.qlink.state.Chat;
 
 public class GameDelegate {
 	private static Logger _log=Logger.getLogger(GameDelegate.class);
@@ -44,6 +43,7 @@ public class GameDelegate {
 	private ArrayList _alDeclineList=new ArrayList();
 	private ArrayList _alAcceptList=new ArrayList();
 	private ArrayList _alAbstainList=new ArrayList();
+	private boolean _bActive=true;
 
 	/**
 	 * @param name
@@ -56,24 +56,29 @@ public class GameDelegate {
 		_sType=type;
 		_bSystemPickOrder=systemPickOrder;
 		_room=room;
-		clearPlayers();
 		_log.info("Creating new instance of " + name);
 	}
 
 	/**
 	 * @param seat
+	 * @throws UserMismatchException
+	 * @throws UserNotInRoomException
 	 */
-	public boolean addPlayer(int seat) {
-		// need to check if this player is invited to another game.
-		SeatInfo info=_room.getSeatInfo(seat);
-		if(info!=null && !info.isInGame()) {
-			_room.addGameUser(seat,this);
-			_alPlayers.add(info);
-			// update voting.
-			clearVotes();
-			return true;
-		} else {
-			return false;
+	public boolean addPlayer(String handle) throws UserNotInRoomException {
+		SeatInfo info;
+		synchronized(_room) {
+			info=_room.addUserToGame(handle,this);
+			if(info==null) {
+				_log.debug("Could not add '" + handle + "' to game: " + _sName);
+				return false;
+			} else {
+				// add to unacked invite list.
+				synchronized(_alDeclineList) {
+					_alPlayers.add(info);
+					_alAbstainList.add(info);
+				}
+				return true;
+			}
 		}
 	}
 
@@ -162,6 +167,8 @@ public class GameDelegate {
 				processGameEvent((GameCommEvent)event);
 			else if(event instanceof GameEvent) 
 				processGameLoadEvent((GameEvent)event);
+			else if(event instanceof GameTerminationEvent) 
+				processGameTerminationEvent((GameTerminationEvent)event);
 		}
 	}
 	
@@ -184,6 +191,14 @@ public class GameDelegate {
 		if(event != null && _listeners.size() > 0) {
 			for(int i=0,size=_listeners.size();i<size;i++) {
 				((GameEventListener)_listeners.get(i)).eventOccurred(event);
+			}
+		}
+	}
+
+	protected void processGameTerminationEvent(GameTerminationEvent event) {
+		if(event != null && _listeners.size() > 0) {
+			for(int i=0,size=_listeners.size();i<size;i++) {
+				((GameEventListener)_listeners.get(i)).gameTerminated(event);
 			}
 		}
 	}
@@ -216,16 +231,19 @@ public class GameDelegate {
 		return _iID;
 	}
 
-	public void clearPlayers() {
-		_alPlayers.clear();
-		clearVotes();
-		_seats=null;
-		
-	}
-	
 	public void terminate() {
 		_log.info("Terminating instance of " + _sName);
+		// let everyone watching this game know.
+		processEvent(new GameTerminationEvent(this));
+		synchronized(_alDeclineList) {
+			while(_alPlayers.size()>0)
+				removePlayer((SeatInfo)_alPlayers.get(0));
+		}
+		synchronized(_listeners) {
+			_listeners.clear();
+		}
 		_room.destroyGame(this);
+		_bActive=false;
 	}
 
 	/**
@@ -275,7 +293,7 @@ public class GameDelegate {
 	/**
 	 * 
 	 */
-	private void clearVotes() {
+	public void clearVotes() {
 		synchronized(_alDeclineList) {
 			_alDeclineList.clear();
 			_alAcceptList.clear();
@@ -301,16 +319,22 @@ public class GameDelegate {
 	}
 
 	/**
-	 * @param seat
+	 * @param handle
 	 * 
 	 */
 	public void leave(int seat) {
 		SeatInfo info= _room.getSeatInfo(seat);
-		removePlayer(info);
-		processEvent(new GameEvent(this,GameEvent.LEAVE_GAME, seat, info.getHandle()));
-		synchronized(_alDeclineList) {
-			if(_alPlayers.size()==0)
-				terminate();
+		if(info!=null) {
+			_log.debug("Removing '" + info.getHandle() + "' from game: " + _sName);
+			removePlayer(info);
+			processEvent(new GameEvent(this,GameEvent.LEAVE_GAME, info.getSeat(), info.getHandle()));
+			synchronized(_alDeclineList) {
+				// is everyone gone?
+				if(_alPlayers.size()==0)
+					terminate();
+			}
+		} else {
+			_log.warn("Player '" + info.getHandle() + "' not in game: " + _sName);
 		}
 	}
 
@@ -318,14 +342,53 @@ public class GameDelegate {
 	 * @param seat
 	 */
 	private void removePlayer(SeatInfo info) {
-		if(info!=null) {
-			_room.removeGameUser(info.getSeat());
-			synchronized(_alDeclineList) {
-				_alPlayers.remove(info);
-				_alAbstainList.remove(info);
-				_alDeclineList.remove(info);
-				_alAcceptList.remove(info);
-			}
+		_room.removeUserFromGame(info.getHandle());
+		synchronized(_alDeclineList) {
+			_alPlayers.remove(info);
+			_alAbstainList.remove(info);
+			_alDeclineList.remove(info);
+			_alAcceptList.remove(info);
 		}
+	}
+
+	/**
+	 * @param seat
+	 */
+	public void restart(int seat) {
+		SeatInfo info= _room.getSeatInfo(seat);
+		// we need to re-order the players to have this person first.
+		// for now, let's just shift everyone up by 1
+		int i=1;
+		while(_seats[i]!=info.getSeat() && i<_seats.length) {
+			_seats[i] = _seats[i-1];
+		}
+		_seats[0]=(byte)info.getSeat();
+		processEvent(new GameEvent(this,GameEvent.RESTART_GAME, seat, info.getHandle()));
+	}
+
+	/**
+	 * @return
+	 */
+	public boolean isActive() {
+		return _bActive;
+	}
+
+	/**
+	 * 
+	 */
+	public void start(int seat) {
+		SeatInfo info= _room.getSeatInfo(seat);
+		processEvent(new GameEvent(this,GameEvent.START_GAME, seat, info.getHandle()));
+		
+	}
+
+	/**
+	 * @param seat
+	 */
+	public void declineRestart(int seat) {
+		SeatInfo info=_room.getSeatInfo(seat);
+		addDecline(info);
+		processEvent(new GameEvent(this,GameEvent.DECLINE_RESTART, seat, info.getHandle()));
+		
 	}
 }

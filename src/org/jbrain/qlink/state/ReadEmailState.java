@@ -33,6 +33,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.*;
 import org.jbrain.qlink.cmd.action.*;
+import org.jbrain.qlink.db.DBUtils;
 import org.jbrain.qlink.text.TextFormatter;
 
 public class ReadEmailState extends AbstractState {
@@ -95,7 +96,7 @@ public class ReadEmailState extends AbstractState {
         ResultSet rs = null;
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Getting next email for " + _server.getHandle());
             rs=stmt.executeQuery("SELECT email_id,body FROM email WHERE unread='Y' AND recipient_id=" + _server.getID() + " LIMIT 1");
@@ -112,17 +113,9 @@ public class ReadEmailState extends AbstractState {
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-                stmt = null;
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
         return null;
 	}

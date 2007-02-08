@@ -8,7 +8,7 @@ import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.dialog.AbstractDialog;
 
 
-public abstract class AbstractDialogState extends AbstractState {
+public abstract class AbstractDialogState extends AbstractPhaseState {
 	private static Logger _log=Logger.getLogger(AbstractDialogState.class);
 	public static final int PHASE_ALLOCATE = 2;
 	public static final int PHASE_RESPONSE = 3;
@@ -17,7 +17,7 @@ public abstract class AbstractDialogState extends AbstractState {
 	protected DialogCallBack _callback;
 
 	public AbstractDialogState(QServer server, AbstractDialog d, DialogCallBack callback) {
-		super(server);
+		super(server,PHASE_ALLOCATE);
 		_dialog=d;
 		_callback=callback;
 	}
@@ -29,7 +29,6 @@ public abstract class AbstractDialogState extends AbstractState {
 		_server.send(_dialog.getPrepAction());
 		if(_log.isInfoEnabled())
 			_log.info("PHASE: Allocating dialog: " + _dialog.getName());
-		setPhase(PHASE_ALLOCATE);
     	super.activate();
 	}
 
@@ -39,14 +38,11 @@ public abstract class AbstractDialogState extends AbstractState {
 
 		// put global action handlers here...
 		switch(getPhase()) {
-			case PHASE_INITIAL:
+			case PHASE_ALLOCATE:
 				if(a instanceof ClearScreen) {
 					// ignore this.
 					rc=true;
-				} 
-				break;
-			case PHASE_ALLOCATE:
-				if(a instanceof LoginDialogAllocated || 
+				} else if(a instanceof LoginDialogAllocated || 
 					a instanceof ChatDialogAllocated) {
 					// dialog has been allocated, send data
 					_log.debug("Sending dialog data");

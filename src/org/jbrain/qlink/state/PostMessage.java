@@ -34,6 +34,7 @@ import java.util.Date;
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.QServer;
 import org.jbrain.qlink.cmd.action.*;
+import org.jbrain.qlink.db.DBUtils;
 
 
 public class PostMessage extends AbstractState {
@@ -70,7 +71,7 @@ public class PostMessage extends AbstractState {
     	//we need to find an open ID, and grab it.
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Trying to find an open MessageEntry");
             id=_server.getNextID(_iNextID!=0?_iNextID:_iParentID!=0?_iParentID:_iBaseID,MenuItem.MESSAGE,0x7fffff);
@@ -105,18 +106,9 @@ public class PostMessage extends AbstractState {
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-
-                stmt = null;
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 	

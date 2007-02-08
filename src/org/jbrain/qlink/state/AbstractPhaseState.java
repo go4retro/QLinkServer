@@ -1,6 +1,6 @@
 /*
-	Copyright Jim Brain and Brain Innovations, 2004,2005
-  
+	Copyright Jim Brain and Brain Innovations, 2005.
+
 	This file is part of QLinkServer.
 
 	QLinkServer is free software; you can redistribute it and/or modify
@@ -16,17 +16,35 @@
 	You should have received a copy of the GNU General Public License
 	along with QLinkServer; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-    
+
 	@author Jim Brain
-*/
+	Created on Sep 9, 2005
+	
+ */
+package org.jbrain.qlink.state;
 
-package org.jbrain.qlink.chat;
+import org.jbrain.qlink.QServer;
 
-public interface RoomEventListener extends java.util.EventListener {
-	void userSaid(ChatEvent event);
-	void userJoined(JoinEvent event);
-	void userLeft(JoinEvent event);
-	void systemSent(SystemMessageEvent event);
-	void acceptingQuestions(QuestionStateEvent event);
-	void rejectingQuestions(QuestionStateEvent event);
+
+public abstract class AbstractPhaseState extends AbstractState {
+
+	private int _iPhase;
+
+	/**
+	 * @param server
+	 * @param phase
+	 */
+	public AbstractPhaseState(QServer server, int phase) {
+		super(server);
+		_iPhase=phase;
+	}
+
+	protected int getPhase() {
+		return _iPhase;
+	}
+	
+	protected void setPhase(int phase) {
+		_iPhase=phase;
+	}
+	
 }

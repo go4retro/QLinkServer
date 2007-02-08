@@ -36,12 +36,14 @@ import org.jbrain.qlink.cmd.action.*;
 
 // this class handles all comm to from client.
 public class QConnection extends Thread {
+	private static final int MAX_CONSECUTIVE_ERRORS=20;
 	private static Logger _log=Logger.getLogger(QConnection.class);
 	private static Timer _timer=new Timer();
 	private static TimerTask _pingTimer=null;;
 	public static byte FRAME_END=0x0d;
 	private ArrayList _listeners=new ArrayList();
 	private ArrayList _alSendQueue=new ArrayList();
+	private int _iConsecutiveErrors=0;
 	private int _iQLen;
 	private byte _inSequence;
 	private byte _outSequence;
@@ -102,14 +104,15 @@ public class QConnection extends Thread {
 	
 	// listen for data to arrive, create Event, and dispatch.
 	public void run() {
-		_log.info("Starting link thread");
-		_bRunning=true;
 		CommandFactory factory=new CommandFactory();
 		Command cmd;
 		byte[] data=new byte[256];
 		int start=0;
 		int len=0;
 		int i;
+		byte inSeq=_inSequence;
+		_log.info("Starting link thread");
+		_bRunning=true;
 		
 		try {
 			while(_bRunning && (i=_is.read(data,len,256-len))>0) {
@@ -133,31 +136,50 @@ public class QConnection extends Thread {
 									_iRelease=((Reset)cmd).getRelease();
 									this.write(new ResetAck());
 								} else {
-									_inSequence=cmd.getRecvSequence();
-									freePackets(cmd.getSendSequence(),SequenceError.CMD==cmd.getCommand());
-									switch(cmd.getCommand()) {
-										case WindowFull.CMD_WINDOWFULL:
-											write(new Ack());
-											break;
-										case Ping.CMD_PING:
-											// not sure what you are supposed to do.
-											write(new ResetAck());
-											break;
-										case AbstractAction.CMD_ACTION:
-											processActionEvent(new ActionEvent(this,(Action)cmd));
-											break;
-										case ResetAck.CMD_RESETACK:
-											break;
-										case SequenceError.CMD:
-											break;
+									// get the sequence number of the received packet.
+									inSeq=cmd.getRecvSequence();
+									if(cmd instanceof Action && incSeq(_inSequence)!=inSeq) {
+										_log.info("Sequence out of order, sending sequence error");
+										if(++_iConsecutiveErrors == MAX_CONSECUTIVE_ERRORS)
+											_bRunning=false;
+										else
+											write(new SequenceError());
+									} else {
+										_iConsecutiveErrors=0;
+										_inSequence=inSeq;
+										freePackets(cmd.getSendSequence(),SequenceError.CMD==cmd.getCommand());
+										switch(cmd.getCommand()) {
+											case WindowFull.CMD_WINDOWFULL:
+												write(new Ack());
+												break;
+											case Ping.CMD_PING:
+												// not sure what you are supposed to do.
+												write(new ResetAck());
+												break;
+											case AbstractAction.CMD_ACTION:
+												if(cmd instanceof Action)
+													processActionEvent(new ActionEvent(this,(Action)cmd));
+												else
+													_log.error("Tried to process action " + cmd.getName());
+												break;
+											case ResetAck.CMD_RESETACK:
+												break;
+											case SequenceError.CMD:
+												break;
+										}
 									}
 								}
 							} else {
 								_log.warn("Unknown packet received");
 							}
 						} catch (CRCException e) {
-							_log.warn("CRC check failed",e);
-							// skip.
+							_log.info("CRC check failed, sending sequence error",e);
+							if(++_iConsecutiveErrors == MAX_CONSECUTIVE_ERRORS)
+								_bRunning=false;
+							else
+								write(new SequenceError());
+							// cheesy, we should now dump all packets in the window, but no
+							// idea how to do that.
 						}
 						// skip over framing end.
 						start=Math.min(i+1,len);
@@ -272,6 +294,7 @@ public class QConnection extends Thread {
 		// we need to dump buffers, if any.
 		_alSendQueue.clear();
 		_iQLen=0;
+		_iConsecutiveErrors=0;
 		
 		
 	}
@@ -293,10 +316,7 @@ public class QConnection extends Thread {
 		// set sequences
 		if(cmd instanceof Action) {
 			_iQLen++;
-			if(_outSequence==SEQ_DEFAULT)
-				_outSequence=SEQ_LOW;
-			else
-				_outSequence++;
+			_outSequence=incSeq(_outSequence);
 		}
 		cmd.setSendSequence(_outSequence);
 		cmd.setRecvSequence(_inSequence);
@@ -313,6 +333,18 @@ public class QConnection extends Thread {
 		//_os.write(FRAME_END);
 	}
 	
+	/**
+	 * @param sequence
+	 * @return
+	 */
+	private byte incSeq(byte sequence) {
+		if(sequence==SEQ_DEFAULT)
+			sequence=SEQ_LOW;
+		else
+			sequence++;
+		return sequence;
+	}
+
 	/**
 	 * 
 	 */

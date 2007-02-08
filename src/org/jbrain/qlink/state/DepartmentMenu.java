@@ -37,6 +37,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.QServer;
 import org.jbrain.qlink.cmd.action.*;
+import org.jbrain.qlink.db.DBUtils;
 import org.jbrain.qlink.text.TextFormatter;
 
 class MenuEntry {
@@ -277,7 +278,7 @@ public class DepartmentMenu extends AbstractState {
         ResultSet rs = null;
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Selecting file " + id + " for download");
 	        rs=stmt.executeQuery("SELECT filetype, LENGTH(data) as length,data from files where reference_id=" + id);
@@ -287,7 +288,7 @@ public class DepartmentMenu extends AbstractState {
 	        	String type=rs.getString("filetype");
 	        	// get binary stream
 	        	_is=new EscapedInputStream(rs.getBinaryStream("data"));
-	        	closeRS(rs);
+	        	DBUtils.close(rs);
 	        	_server.send(new InitDownload(mid,type));
 	        } else {
     			_log.error("File not found.");
@@ -297,16 +298,9 @@ public class DepartmentMenu extends AbstractState {
         	_log.error("SQL Exception",e);
         	// TODO What should we do if we do not find anything?
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 
@@ -321,7 +315,7 @@ public class DepartmentMenu extends AbstractState {
         ResultSet rs = null;
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Searching for reply after " + date);
 	        rs=stmt.executeQuery("SELECT message_id, parent_id from messages where reference_id=" + id);
@@ -332,7 +326,7 @@ public class DepartmentMenu extends AbstractState {
 	        	int pid=rs.getInt("parent_id");
 	        	if(pid!=_iCurrParentID)
 	        		_log.error("Select Dated Reply id " + id + " has parent=" + pid + ", but current ParentID value=" + _iCurrParentID);
-	        	closeRS(rs);
+	        	DBUtils.close(rs);
 	        	SimpleDateFormat sdf=new SimpleDateFormat("MM/dd/yyyy");
 	        	// now, look for new replies.
 		        rs=stmt.executeQuery("SELECT reference_id from messages where parent_id=" + pid + " AND message_id > " + mid + " AND date > '" + sdf.format(date) + " LIMIT 1");
@@ -350,16 +344,9 @@ public class DepartmentMenu extends AbstractState {
         	_log.error("SQL Exception",e);
         	// TODO What should we do if we do not find anything?
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
     	return id;
 	}
@@ -370,7 +357,7 @@ public class DepartmentMenu extends AbstractState {
         ResultSet rs = null;
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Selecting Item: " + id);
 	        rs=stmt.executeQuery("SELECT entry_type, cost FROM entry_types WHERE reference_id=" + id);
@@ -424,16 +411,9 @@ public class DepartmentMenu extends AbstractState {
         	_log.error("SQL Exception",e);
         	// big time error, send back error string and close connection
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 	
@@ -448,7 +428,7 @@ public class DepartmentMenu extends AbstractState {
         ResultSet rs = null;
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Get file information for FileID: " + id);
 	        rs=stmt.executeQuery("SELECT name, filetype, description from files where reference_id=" + id);
@@ -470,16 +450,9 @@ public class DepartmentMenu extends AbstractState {
         	_log.error("SQL Exception",e);
         	// big time error, send back error string and close connection
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 
@@ -523,7 +496,7 @@ public class DepartmentMenu extends AbstractState {
         _iCurrMessageID=id;
         _iNextMessageID=0;
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Querying for message");
             String text;
@@ -536,7 +509,7 @@ public class DepartmentMenu extends AbstractState {
 	        	// are we a main message?
 	        	if(pid==0)
 	        		pid=id;
-	        	closeRS(rs);
+	        	DBUtils.close(rs);
 	        	// are there any replies to either this message or it's parent?
 	        	rs=stmt.executeQuery("SELECT reference_id FROM messages WHERE message_id>" + mid + " AND parent_id=" + pid );
 	        	if(rs.next()) {
@@ -546,7 +519,7 @@ public class DepartmentMenu extends AbstractState {
 				_log.error("Message ID invalid.");
 				text="Message Not Found";
         	}
-        	closeRS(rs);
+        	DBUtils.close(rs);
 	        // init data area
             _server.send(new InitDataSend(id,0,0,_iNextMessageID,0));
             tf.add(text);
@@ -557,16 +530,9 @@ public class DepartmentMenu extends AbstractState {
         	_log.error("SQL Exception",e);
         	// big time error, send back error string and close connection
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 
@@ -581,7 +547,7 @@ public class DepartmentMenu extends AbstractState {
         boolean bData=false;
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Querying for text file");
             String data;
@@ -595,7 +561,7 @@ public class DepartmentMenu extends AbstractState {
 				_log.error("Article ID invalid.");
 				data="File Not Found";
         	}
-        	closeRS(rs);
+        	DBUtils.close(rs);
 	        // init data area
             _server.send(new InitDataSend(id,prev,next));
             TextFormatter tf=new TextFormatter(TextFormatter.FORMAT_NONE,39);
@@ -611,16 +577,9 @@ public class DepartmentMenu extends AbstractState {
         	_log.error("SQL Exception",e);
         	// big time error, send back error string and close connection
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 
@@ -683,7 +642,7 @@ public class DepartmentMenu extends AbstractState {
         _alMenu.clear();
 		_iCurrMenuID=id;
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Querying for menu");
 	        rs=stmt.executeQuery("SELECT toc.reference_id,toc.title,entry_types.entry_type,entry_types.cost FROM toc,entry_types WHERE toc.reference_id=entry_types.reference_id and toc.menu_id=" + id + " AND toc.active='Y' ORDER by toc.sort_order");
@@ -703,21 +662,14 @@ public class DepartmentMenu extends AbstractState {
 	        	}
 	        	_alMenu.add(new MenuEntry(refid,title,type,iCost));
 	        }
-        	closeRS(rs);
+        	DBUtils.close(rs);
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);
         	// big time error, send back error string and close connection
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 	
@@ -741,7 +693,7 @@ public class DepartmentMenu extends AbstractState {
         _alMessages.clear();
         _hmMessages.clear();
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Selecting message list for message base " + id);
         	rs=stmt.executeQuery("SELECT reference_id,parent_id, title,author, date,replies from messages WHERE base_id=" + id + " " + query + " order by message_id");
@@ -769,16 +721,9 @@ public class DepartmentMenu extends AbstractState {
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 

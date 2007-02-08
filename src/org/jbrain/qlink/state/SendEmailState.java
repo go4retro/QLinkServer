@@ -34,6 +34,7 @@ import java.util.Date;
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.*;
 import org.jbrain.qlink.cmd.action.*;
+import org.jbrain.qlink.db.DBUtils;
 
 public class SendEmailState extends AbstractState {
 	private static Logger _log=Logger.getLogger(SendEmailState.class);
@@ -111,7 +112,7 @@ public class SendEmailState extends AbstractState {
         ResultSet rs = null;
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Saving email to " + _sRecipient);
             String sql="INSERT INTO email (recipient_id,recipient,sender_id,sender,subject,body,unread,received_date) VALUES (" + id + ",NULL," + _server.getID() + ",NULL,NULL,'" + text.replaceAll("'","\\\\'") + "','Y',now())";
@@ -127,18 +128,9 @@ public class SendEmailState extends AbstractState {
         	_log.error("SQL Exception",e);
         	// big time error, send back error string and close connection
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-
-                stmt = null;
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
 	}
 }

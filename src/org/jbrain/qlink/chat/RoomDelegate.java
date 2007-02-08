@@ -35,7 +35,7 @@ class RoomDelegate {
 	private String _sName;
 	private SeatInfo[] _users=new SeatInfo[ROOM_CAPACITY];
 	private Hashtable _htUsers=new Hashtable();
-	private ArrayList _listeners=new ArrayList();
+	protected ArrayList _listeners=new ArrayList();
 	private boolean _bPublic;
 	private boolean _bLocked;
 	private static Random _die=new Random();
@@ -68,6 +68,8 @@ class RoomDelegate {
 	}
 	
 	public RoomDelegate(String name, boolean bPublic, boolean bLocked) {
+		if(_log.isDebugEnabled())
+			_log.debug("Creating " + (bLocked?"locked":"unlocked") + " " + (bPublic?"public":"private") + " room: " + name);
 		_sName=name;
 		_bPublic=bPublic;
 		_bLocked=bLocked;
@@ -84,7 +86,8 @@ class RoomDelegate {
 	 * @return
 	 */
 	public int getPopulation() {
-		_log.debug("Population of '" + _sName + "' is " + _htUsers.size());
+		if(_log.isDebugEnabled())
+			_log.debug("Population of '" + _sName + "' is " + _htUsers.size());
 		return _htUsers.size();
 	}
 
@@ -92,12 +95,11 @@ class RoomDelegate {
 	 * @param handle
 	 */
 	public int addUser(String handle) {
-		SeatInfo user=(SeatInfo)_htUsers.get(handle);
-		
-		if(user==null) {
-			if(_log.isDebugEnabled())
-				_log.debug("Adding '" + handle + "' to room: " + _sName);
-			synchronized(_htUsers) {
+		synchronized(_htUsers) {
+			SeatInfo user=getSeatInfo(handle);
+			if(user==null) {
+				if(_log.isDebugEnabled())
+					_log.debug("Adding '" + handle + "' to room: " + _sName);
 				if(!isFull()) {
 					for(int i=0;i<ROOM_CAPACITY;i++){
 						if(_users[i]==null) {
@@ -109,12 +111,12 @@ class RoomDelegate {
 						}
 					}
 				}
+				return -1;
+			} else {
+				if(_log.isDebugEnabled())
+					_log.debug("'" + handle + "' is already in room: " + _sName);
+				return user.getSeat();
 			}
-			return -1;
-		} else {
-			if(_log.isDebugEnabled())
-				_log.debug("'" + handle + "' is already in room: " + _sName);
-			return user.getSeat();
 		}
 	}
 
@@ -130,17 +132,20 @@ class RoomDelegate {
 	
 	}
 	
-	public void removeUser(int seat) {
+	public synchronized void removeUser(int seat) {
 		synchronized(_htUsers) {
+			SeatInfo user=getSeatInfo(seat);
 			// was this seat filled?
-			if(_users[seat]!=null) {
+			if(user!=null) {
 				if(_log.isDebugEnabled())
-					_log.debug("Removing '" + _users[seat].getHandle() + "' from room: " + _sName);
-				_htUsers.remove(_users[seat].getHandle());
-				// remove any pending game.
-				_userGame[seat]=null;
-				processEvent(new JoinEvent(this,JoinEvent.EVENT_LEAVE,seat,_users[seat].getHandle()));
+					_log.debug("Removing '" + user.getHandle() + "' from room: " + _sName);
+				_htUsers.remove(user.getHandle());
 				_users[seat]=null;
+				// are they in a game?
+				if(_userGame[seat]!= null) {
+					_userGame[seat].leave(seat);
+				}
+				processEvent(new JoinEvent(this,JoinEvent.EVENT_LEAVE,seat,user.getHandle()));
 			}
 		}
 	}
@@ -151,29 +156,19 @@ class RoomDelegate {
 			QuotedStringTokenizer st=new QuotedStringTokenizer(text);
 			String cmd=st.nextToken(" ").toLowerCase();
 			int pos=0;
-			if(cmd.startsWith("//msg")) {
-				// Send someone a private msg;
-				if(st.hasMoreTokens())
-					name=st.nextToken(" ");
-				if(st.hasMoreTokens())
-					msg=st.nextToken("\n");
-				if(name != null && msg!= null) {
-					_log.debug("Executing //msg from seat " + seat + " to " + name);
-					processEvent(new MessageEvent(this,seat,name,msg));
-				}
-			} else if(cmd.startsWith("//sysmsg") && !this.isPublicRoom()) {
+			if(cmd.startsWith("//sysmsg") && !this.isPublicRoom()) {
 				// Send SYSOLM;
 				if(st.hasMoreTokens())
 					msg=st.nextToken("\n");
 				if(msg!= null) {
-					_log.debug("Executing //sysmsg from seat " + seat);
+					_log.debug("Executing '" + text + "' from seat " + seat);
 					QServer.sendSYSOLM(msg);
 				}
 			} else if(cmd.startsWith("//me")) {
 				if(st.hasMoreTokens())
 					msg=st.nextToken("\n");
 				if(msg!= null) {
-					_log.debug("Executing //me " + text + " from seat " + seat);
+					_log.debug("Executing '" + text + "' from seat " + seat);
 					processEvent(new ChatEvent(this,"","*" + _users[seat].getHandle() + " " + msg));
 				}
 			} else if(cmd.startsWith("//8ba")) {
@@ -262,14 +257,6 @@ class RoomDelegate {
 		}
 	}
 
-	public synchronized void processMessageEvent(MessageEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			for(int i=0,size=_listeners.size();i<size;i++) {
-				((RoomEventListener)_listeners.get(i)).userSaid(event);
-			}
-		}
-	}
-
 	public synchronized void processSystemMessageEvent(SystemMessageEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			for(int i=0,size=_listeners.size();i<size;i++) {
@@ -289,8 +276,6 @@ class RoomDelegate {
 	protected synchronized void processEvent(RoomEvent event) {
 		if(event instanceof JoinEvent) 
 			processJoinEvent((JoinEvent)event);
-		else if(event instanceof MessageEvent) 
-			processMessageEvent((MessageEvent)event);
 		else if(event instanceof ChatEvent) 
 			processChatEvent((ChatEvent)event);
 		else if(event instanceof SystemMessageEvent) 
@@ -336,21 +321,20 @@ class RoomDelegate {
 		return game;
 	}
 	
-	public void addGameUser(int seat, GameDelegate game) {
-		_userGame[seat]=game;
-		_users[seat].setGameStatus(true);
-	}
-	
-	public void removeGameUser(int seat) {
-		_userGame[seat]=null;
-		_users[seat].setGameStatus(false);
+	public void removeUserFromGame(String handle) {
+		synchronized(_htUsers) {
+			SeatInfo user=getSeatInfo(handle);
+			if(user!=null) {
+				int seat=user.getSeat();
+				_userGame[seat]=null;
+				_users[seat].setGameStatus(false);
+			}
+		}
+		
 	}
 	
 	public GameDelegate getGame(int seat) {
-		GameDelegate game=_userGame[seat];
-		// turn off pending status;
-		_users[seat].setGameStatus(false);
-		return game;
+		return _userGame[seat];
 	}
 
 	/**
@@ -358,10 +342,12 @@ class RoomDelegate {
 	 * @return
 	 */
 	public SeatInfo getSeatInfo(int seat) {
+		// synchronized on the array
 		return _users[seat];
 	}
 	
 	public SeatInfo getSeatInfo(String handle) {
+		// synchronized on the table
 		return (SeatInfo)_htUsers.get(handle);
 	}
 
@@ -398,4 +384,31 @@ class RoomDelegate {
 		}
 		return info;
 	}
+
+	/**
+	 * @param handle
+	 * @param delegate
+	 * @return
+	 * @throws UserNotInRoomException
+	 * @throws UserMismatchException
+	 */
+	public SeatInfo addUserToGame(String handle, GameDelegate game) throws UserNotInRoomException {
+		// we need to check seat and handle to make sure they match.
+		synchronized(_htUsers) {
+			SeatInfo info=getSeatInfo(handle);
+			if(info==null)
+				throw new UserNotInRoomException();
+			if(!info.isInGame()) {
+				info.setGameStatus(true);
+				_userGame[info.getSeat()]=game;
+				return info;
+			}
+			return null;
+		}
+	}
+	
+	public String getInfo() {
+		return "";
+	}
+
 }

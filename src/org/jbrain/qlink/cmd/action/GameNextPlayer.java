@@ -26,19 +26,10 @@ package org.jbrain.qlink.cmd.action;
 import org.jbrain.qlink.cmd.CRCException;
 
 
-public class GameNextPlayer extends AbstractChatAction {
+public class GameNextPlayer extends GamePlayer {
 	public static final String MNEMONIC="GU";
 
 	public GameNextPlayer(byte[] data, int start, int len) throws CRCException {
 		super(data, start, len);
 	}
-	
-	public int getSeat() {
-		return _iSeat;
-	}
-	
-	public String getHandle() {
-		return _sData;
-	}
-
 }

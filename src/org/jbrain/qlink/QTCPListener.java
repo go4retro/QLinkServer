@@ -30,6 +30,7 @@ import java.util.*;
 
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.connection.QConnection;
+import org.jbrain.qlink.db.DBUtils;
 
 
 
@@ -76,10 +77,9 @@ public class QTCPListener {
 		Socket clientSocket = null; 
 		
 		_log.info("Starting server");
-	    try {
-			Class.forName("com.mysql.jdbc.Driver").newInstance();
-		} catch (Exception e) {
-			_log.fatal("Could not load MySQL JDBC driver",e);
+		try {
+			DBUtils.init();
+		} catch (Exception e1) {
 			rc=-1;
 		}
         

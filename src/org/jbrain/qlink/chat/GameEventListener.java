@@ -25,4 +25,5 @@ package org.jbrain.qlink.chat;
 public interface GameEventListener extends java.util.EventListener {
 	void gameSent(GameCommEvent event);
 	void eventOccurred(GameEvent event);
+	void gameTerminated(GameTerminationEvent event);
 }

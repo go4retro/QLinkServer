@@ -38,9 +38,6 @@ public abstract class AbstractRoom implements Room {
 		public void userLeft(JoinEvent event) {
 			processEvent(event);
 		}
-		public void userSaid(MessageEvent event) {
-			processEvent(event);
-		}
 		public void systemSent(SystemMessageEvent event) {
 			processEvent(event);
 		}
@@ -126,14 +123,6 @@ public abstract class AbstractRoom implements Room {
 		}
 	}
 
-	protected synchronized void processMessageEvent(MessageEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			for(int i=0,size=_listeners.size();i<size;i++) {
-				((RoomEventListener)_listeners.get(i)).userSaid(event);
-			}
-		}
-	}
-
 	protected synchronized void processSystemMessageEvent(SystemMessageEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			for(int i=0,size=_listeners.size();i<size;i++) {
@@ -145,8 +134,6 @@ public abstract class AbstractRoom implements Room {
 	protected synchronized void processEvent(RoomEvent event) {
 		if(event instanceof JoinEvent) 
 			processJoinEvent((JoinEvent)event);
-		else if(event instanceof MessageEvent) 
-			processMessageEvent((MessageEvent)event);
 		else if(event instanceof ChatEvent) 
 			processChatEvent((ChatEvent)event);
 		else if(event instanceof SystemMessageEvent) 

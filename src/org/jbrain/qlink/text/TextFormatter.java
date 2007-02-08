@@ -8,6 +8,7 @@ public class TextFormatter {
 	public static final int FORMAT_NONE=1;
 	public static final int FORMAT_JUSTIFIED=2;
 	public static final int FORMAT_CENTERED=3;
+	public static final int FORMAT_PADDED=4;
 	private static final int LINE_LENGTH=40;
 	private ArrayList _alText=new ArrayList();
 	private int _iFormat;
@@ -49,7 +50,7 @@ public class TextFormatter {
 	 */
 	private void addParagraph(String string, int pos) {
 		int start=pos;
-		if(pos+LINE_LENGTH>=string.length()) {
+		if(pos+_iWidth>=string.length()) {
 			addLine(string.substring(pos));
 			// end of string state
 		} else {
@@ -85,6 +86,9 @@ public class TextFormatter {
 	 */
 	private void addLine(String string) {
 		switch(_iFormat) {
+			case FORMAT_PADDED:
+				_alText.add(string+pad.substring(0,_iWidth-string.length()));
+				break;
 			case FORMAT_JUSTIFIED:
 				_alText.add(pad.substring(0,_iWidth-string.length())+string);
 				break;
@@ -99,5 +103,10 @@ public class TextFormatter {
 	
 	public List getList() {
 		return Collections.unmodifiableList(_alText);
+	}
+	
+	public static void main (String a[]) {
+		TextFormatter tf=new TextFormatter(TextFormatter.FORMAT_PADDED,29);
+		tf.add("This is a multi-line quesion.I am not sure it will work,  but maybe it will I hope it");
 	}
 } 

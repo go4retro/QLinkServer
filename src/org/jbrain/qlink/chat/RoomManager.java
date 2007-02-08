@@ -34,7 +34,7 @@ import org.apache.log4j.Logger;
  */
 public class RoomManager {
 	private static Logger _log=Logger.getLogger(RoomManager.class);
-	private static ArrayList _alLobbies=new ArrayList();
+	//private static ArrayList _alLobbies=new ArrayList();
 	private static HashMap _hmUsers=new HashMap();
 	private static HashMap _hmPublicRooms=new HashMap();
 	private static HashMap _hmPrivateRooms=new HashMap();
@@ -44,8 +44,7 @@ public class RoomManager {
 	static {
 		// add a default Lobby.
 		_log.debug("Creating default Lobby");
-		LobbyDelegate room=new LobbyDelegate(ROOM_LOBBY,true);
-		addLobby(room);
+		addPublicRoom(new RoomDelegate(ROOM_LOBBY,true,true));
 		_log.debug("Creating Auditorium");
 		_auditorium=new AuditoriumDelegate("Auditorium");
 		addPrivateRoom(_auditorium);
@@ -61,36 +60,22 @@ public class RoomManager {
 		join("Person 8");
 		join("Person 9");*/
 	}
-	/* 
-	 * This code should scan through the lobbies list, trying to find the first lobby that has a slot.
-	 * If it cannot find any, then it should create the first null room found, and put the person in there.
-	 */
+
 	public static synchronized Room join(String handle) {
-		LobbyDelegate room=null;
-		int seat=0;
+		String name=ROOM_LOBBY;
+		Room room=null;
+		int i=(int)'A';
 		
-		// any current lobbies have room?
-		for(int i=0,size=_alLobbies.size();i<size;i++) {
-			room=(LobbyDelegate)_alLobbies.get(i);
-			if(room!= null && !room.isFull()) {
-				seat=room.addUser(handle);
-				break;
-			} else {
-				room=null;
+		do {
+			room=joinRoom(name,handle,true);
+			if(i<='Z')
+				name=ROOM_LOBBY + " " + (char)(i++);
+			else {
+				name=ROOM_LOBBY + " " + (int)(i-'Z');
+				i++;
 			}
-			
-		}
-		if(room==null) {
-			int i, size;
-			for(i=0,size=_alLobbies.size();i<size;i++) {
-				if(_alLobbies.get(i)==null)
-					break;
-			}
-			room=new LobbyDelegate(ROOM_LOBBY + " " + (char)(i+'@'),false);
-			addLobby(room);
-			seat=room.addUser(handle);
-		}
-		return new NormalRoom(room,seat);
+		} while(room == null);
+		return room;
 	}
 	
 	/*
@@ -98,9 +83,7 @@ public class RoomManager {
 	 * Questions:
 	 * 
 	 * If a user tries to enter a Lobby, it will work if the Lobby is present and not full
-	 * If the Lobby is full, I assume we should send an error about room full?
-	 * If the Lobby does not exist, should we create it, or fail?
-	 * If the latter, what do we do if the user can;t get into any of the Lobbies because they are full?
+	 * If the Lobby is full, it will generate an error
 	 */
 	public static synchronized Room joinRoom(String name, String handle, boolean bPublic) {
 		RoomDelegate room;
@@ -133,9 +116,7 @@ public class RoomManager {
 	}
 
 	synchronized static void leaveRoom(RoomDelegate room, int seat) {
-		if(room instanceof LobbyDelegate)
-			leaveLobby((LobbyDelegate)room,seat);
-		else if(room.isPublicRoom()) {
+		if(room.isPublicRoom()) {
 			leavePublicRoom(room,seat);
 		} else {
 			leavePrivateRoom(room,seat);
@@ -143,7 +124,6 @@ public class RoomManager {
 	}
 	
 	private static RoomDelegate getPublicRoom(String name) {
-		// if the name is "Lobby...", and does not exist, add a Lobby instead.
 		RoomDelegate room=(RoomDelegate)_hmPublicRooms.get(name.toLowerCase());
 		if(room==null) {
 			room=new RoomDelegate(name,true,false);
@@ -178,28 +158,6 @@ public class RoomManager {
 		room.removeUser(seat);
 		if(room.getPopulation()==0 && !room.isLocked())
 			_hmPrivateRooms.remove(room.getName());
-	}
-
-	private static void leaveLobby(LobbyDelegate room, int seat) {
-		room.removeUser(seat);
-		if(room.getPopulation()==0) {
-			// ditch the public room.
-			int i=_alLobbies.indexOf(room);
-			if(i>0) {
-				_hmPublicRooms.remove(room.getName());
-				if(i+1==_alLobbies.size())
-					// we are the last one in the list, delete
-					_alLobbies.remove(i);
-				else
-					// we are not, so leave a hole.
-					_alLobbies.set(i,null);
-			}
-		}
-	}
-	
-	private static void addLobby(LobbyDelegate room) {
-		_alLobbies.add(room);
-		addPublicRoom(room);
 	}
 
 	/**

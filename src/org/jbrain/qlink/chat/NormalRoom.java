@@ -52,12 +52,6 @@ public class NormalRoom extends AbstractRoom{
 	}
 
 	
-	protected void processMessageEvent(MessageEvent event) {
-		// is it from us?
-		if(event.getOriginatingSeat()==_seat)
-			super.processMessageEvent(event);
-	}
-
 	protected void processSystemMessageEvent(SystemMessageEvent event) {
 		// is it to us or broadcast?
 		if(event.getRecipientSeat()==_seat || event.getRecipientSeat()==SystemMessageEvent.SEAT_BROADCAST)
@@ -76,6 +70,13 @@ public class NormalRoom extends AbstractRoom{
 		if(game!=null)
 			return new Game(_room,_seat,game);
 		return null;
+	}
+
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.Room#getInfo()
+	 */
+	public String getInfo() {
+		return _room.getInfo();
 	}
 
 }

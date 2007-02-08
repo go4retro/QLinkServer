@@ -74,5 +74,6 @@ public interface Room {
 	public abstract boolean isPublicRoom();
 	
 	public GameInfo[] getGameInfoList();
+	public String getInfo();
 
 }

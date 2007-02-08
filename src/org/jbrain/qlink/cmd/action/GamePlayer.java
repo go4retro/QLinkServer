@@ -1,6 +1,6 @@
 /*
-	Copyright Jim Brain and Brain Innovations, 2004,2005
-  
+	Copyright Jim Brain and Brain Innovations, 2005.
+
 	This file is part of QLinkServer.
 
 	QLinkServer is free software; you can redistribute it and/or modify
@@ -16,17 +16,27 @@
 	You should have received a copy of the GNU General Public License
 	along with QLinkServer; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-    
+
 	@author Jim Brain
-*/
+	Created on Sep 2, 2005
+	
+ */
+package org.jbrain.qlink.cmd.action;
 
-package org.jbrain.qlink.chat;
+import org.jbrain.qlink.cmd.CRCException;
 
-public interface RoomEventListener extends java.util.EventListener {
-	void userSaid(ChatEvent event);
-	void userJoined(JoinEvent event);
-	void userLeft(JoinEvent event);
-	void systemSent(SystemMessageEvent event);
-	void acceptingQuestions(QuestionStateEvent event);
-	void rejectingQuestions(QuestionStateEvent event);
+
+public abstract class GamePlayer extends AbstractChatAction {
+	public GamePlayer(byte[] data, int start, int len) throws CRCException {
+		super(data, start, len);
+	}
+	
+	public int getSeat() {
+		return _iSeat;
+	}
+	
+	public String getHandle() {
+		return _sData;
+	}
+
 }

@@ -66,14 +66,11 @@ public class Game {
 
 	/**
 	 * @param string
+	 * @throws UserMismatchException
+	 * @throws UserNotInRoomException
 	 */
-	public boolean addPlayer(String string) {
-		SeatInfo info=_room.getSeatInfo(string);
-		if(info != null) {
-			_game.addPlayer(info.getSeat());
-			return true;
-		}
-		return false;
+	public boolean addPlayer(String handle) throws UserNotInRoomException {
+		return _game.addPlayer(handle);
 	}
 
 	/**
@@ -97,13 +94,6 @@ public class Game {
 		_game.terminate();
 	}
 
-	/**
-	 * 
-	 */
-	public void clearPlayers() {
-		_game.clearPlayers();
-		
-	}
 
 	/**
 	 * @param _listener
@@ -166,6 +156,36 @@ public class Game {
 	 */
 	public void leave() {
 		_game.leave(_iSeat);
+		
+	}
+
+	/**
+	 * 
+	 */
+	public void restart() {
+		_game.restart(_iSeat);
+	}
+
+	/**
+	 * @return
+	 */
+	public boolean isActive() {
+		return _game.isActive();
+	}
+
+	/**
+	 * 
+	 */
+	public void start() {
+		_game.start(_iSeat);
+	}
+
+	/**
+	 * 
+	 */
+	public void declineRestart() {
+		_game.declineRestart(_iSeat);
+		// TODO Auto-generated method stub
 		
 	}
 

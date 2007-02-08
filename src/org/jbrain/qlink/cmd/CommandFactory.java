@@ -34,7 +34,7 @@ public class CommandFactory {
 		if(len<8) {
 			return null;
 		}
-		if(b[0]!=AbstractCommand.CMD_START){
+		if(b[start]!=AbstractCommand.CMD_START){
 			return null;
 		}
 		switch (b[7]&0xff) {

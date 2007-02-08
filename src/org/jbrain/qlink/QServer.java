@@ -25,7 +25,6 @@ package org.jbrain.qlink;
 
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -38,6 +37,7 @@ import org.jbrain.qlink.cmd.action.Action;
 import org.jbrain.qlink.cmd.action.SendOLM;
 import org.jbrain.qlink.cmd.action.SendSYSOLM;
 import org.jbrain.qlink.connection.*;
+import org.jbrain.qlink.db.DBUtils;
 import org.jbrain.qlink.state.*;
 
 public class QServer {
@@ -68,6 +68,8 @@ public class QServer {
 		}
 	};
 	private boolean _bOLMs;
+	public static final String MESSAGE_SYSTEM = "SYS";
+	public static final String MESSAGE_NORMAL = "OLM";
 	
 
 	
@@ -107,24 +109,6 @@ public class QServer {
 		return _sHandle;
 	}
 	
-	/*
-	 * Later, we'll need to move to a Pooled set of connections.
-	 */
-	public Connection getDBConnection() throws SQLException {
-	
-		//if(_conn != null && !_conn.isClosed()) 
-		//	return _conn;
-	    try {
-	    	// TODO move this userid and password somewhere else
-	    	_conn=DriverManager.getConnection("jdbc:mysql://localhost/clink?user=clinkuser&password=clink");
-	    	return _conn;
-	
-	    } catch (SQLException e) {
-	    	_log.error("Could not get DB Connection",e);
-	        throw e;
-	    }
-	}
-
 	/**
 	 * @param int1
 	 */
@@ -193,7 +177,7 @@ public class QServer {
         int rc=-1;
         
         try {
-        	conn=getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Attemping to find Account ID for '" + handle + "'");
         	rs=stmt.executeQuery("SELECT account_id from accounts WHERE handle='" + handle + "'");
@@ -227,7 +211,7 @@ public class QServer {
         String sql; 
         
         try {
-        	conn=getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Attemping to find next available message base ID after "+ start);
         	int orig_id=start;
@@ -309,21 +293,24 @@ public class QServer {
 	public void sendOLM(String recipient, String[] olm) {
 		QServer s=getSession(recipient);
 		if(s!= null && s.canReceiveOLMs()) {
-			s.sendOLM(olm);
+			s.sendOLM(false,olm);
 		}
 	}
 
 	/**
 	 * @param olm
 	 */
-	private void sendOLM(String[] olm) {
+	public void sendOLM(boolean bType,String[] olm) {
 		String id;
 		_log.debug("Preparing OLM for user:" + getHandle());
 		synchronized(_htOLMTable) {
 			//if(_htOLMTable.size()==0)
 			//	_iOLMID=0;
-			DecimalFormat sdf=new DecimalFormat("0000000"); 
-			id= "OLM" + sdf.format(_iOLMID++);
+			DecimalFormat sdf=new DecimalFormat("0000000");
+			if(bType)
+				id= MESSAGE_SYSTEM + sdf.format(_iOLMID++);
+			else
+				id= "OLM" + sdf.format(_iOLMID++);
 			_htOLMTable.put(id,olm);
 		}
 		try {

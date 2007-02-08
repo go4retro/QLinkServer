@@ -232,6 +232,16 @@ public class ActionFactory {
 		if(action.equals(RequestToObserve.MNEMONIC)) {
 			return new RequestToObserve(b,start,len);
 		}
-		return null;
+		if(action.equals(RestartGameAck.MNEMONIC)) {
+			return new RestartGameAck(b,start,len);
+		}
+		if(action.equals(LeaveGame.MNEMONIC)) {
+			return new LeaveGame(b,start,len);
+		}
+		if(action.equals(DeclineRestart.MNEMONIC)) {
+			return new DeclineRestart(b,start,len);
+		}
+		
+		return new UnknownAction(b,start,len);
 	}
 }

@@ -1,11 +1,11 @@
 # phpMyAdmin SQL Dump
-# version 2.5.6-rc2
+# version 2.5.7-pl1
 # http://www.phpmyadmin.net
 #
 # Host: localhost
-# Generation Time: Sep 07, 2005 at 01:17 AM
-# Server version: 3.23.54
-# PHP Version: 4.2.2
+# Generation Time: Sep 11, 2005 at 09:48 PM
+# Server version: 4.0.17
+# PHP Version: 4.3.8
 # 
 # Database : `clink`
 # 
@@ -27,7 +27,7 @@ CREATE TABLE `accounts` (
   `last_update` datetime NOT NULL default '0000-00-00 00:00:00',
   PRIMARY KEY  (`account_id`),
   KEY `user_id` (`user_id`)
-) TYPE=MyISAM AUTO_INCREMENT=204 ;
+) TYPE=MyISAM AUTO_INCREMENT=80 ;
 
 # --------------------------------------------------------
 
@@ -154,11 +154,9 @@ INSERT INTO `articles` VALUES (2226, 0, 0, ' UNDERLINING IN EASY-SCRIPT\n\n To u
 INSERT INTO `articles` VALUES (11882, 0, 0, ' INTERFACING THIRD PARTY PRODUCTS\n\n When hooking up any third party\n product (printers, monitors, etc) to\n the Commodore computer systems, you\n would need to use the appropriate\n interface cable or connector product.\n\n Note: the third party product MUST be\n labeled: "compatible to Commodore\n products" in order to correctly\n connect and use.\n\n Information on which interface should\n be used is provided by the third\n party manufacturer or local dealer.\n\n Interfaces (IEEE or RS232) are\n manufactured by the following:\n\n   OMNI TRONICS (206) 236-2983\n   MIRCO R&D    (303) 985-1473\n   Cables-To-Go  800-826-7904\n\n Also check in local Radio Shack,\n Sears and computer product dealers in\n your area.\n\n Note: for the business computer line:\n 8032P, 4040, 8050, etc. you will need\n to purchase an IEEE interface to\n connect to the C128 and C64 series We\n suggest you contact the following\n company for information on price,\n ordering and availability of the\n interface:\n\n PROGRESSIVE PERIPHERALS\n\n    (303) 825-4144\n\n          -or -\n\n SKYLES ELECTRIC WORKS\n\n    (415) 965-1735\n\n      <PRESS F5 FOR MENU>');
 INSERT INTO `articles` VALUES (40184, 0, 0, ' COMMODORE 4032, 8032 AND PET REPAIRS\n\n All repairs to the COMMODORE "PET"\n models of business computers are done\n by approved service centers. Below is\n a listing of all the current centers\n that repair the "PET" & business\n models.\n\n Note: all parts and peripherals\n servicing inquiries should also be\n sent to the following centers:\n\n On Line Micro Computer Repair\n 3207 S. Brea Canyon Rd. #B\n Diamond Bar, CA 91765\n (714) 594-2641\n\n ACOM Corp.\n 3482 Oakcliff\n Doraville, GA 30340\n (404) 451-8455\n\n Micro Computer Repair\n 105 N. McKinney #B\n Richardson, TX 75081\n (214) 644-3770\n\n Cem Corp.\n Rt. 1 213 Arrow Lane\n Freeport, TX 77541\n (409) 233-3153\n\n Larsons Computer Service\n 4010 Joseph Hardin #280\n Dallas, TX 75236\n (214) 337-4876\n\n      <PRESS F5 FOR MENU>');
 INSERT INTO `articles` VALUES (835141, 0, 0, 'Press RETURN to continue or F5 to cancel.');
-INSERT INTO `articles` VALUES (430, 417, 450, '2005-09-01 Update\r\no File downloads now work!  Only\r\n  one file is up at present, but the\r\n  rest is just a matter of organizing \r\n  the files in the menu:\r\n  CSC:SW Libs:Browse C64 SW\r\n  Select the item with F1, then F7 to\r\n  download.  Comments and such are\r\n  not implemented yet.  Client will\r\n  hang if you try them :-)\r\no Seat #13 bug is finally squashed.\r\n  Bad developer code :-)\r\no Search for replies after date and \r\n  Message Base search now work\r\no Fixed bug in message base pause\r\n  routine.  After 5 msgs, hit return for\r\n  more of the listing.\r\no More bugfixes\r\n');
-INSERT INTO `articles` VALUES (450, 430, 401, '2005-09-02 Update\r\n\r\nImplementation is slowing, due to the types of features left to implement and my energy level.  I will probably set this aside for a few days to refresh.\r\n\r\no Cleaned up Message Bases.  Was using same entry type for messages as for multi-part files.  Fixed.  Also, message listing now has "Press RETURN..." line at end if more than 5 messages.\r\no Removed "<Press F7..." from actual articles and had server add it automatically on transmit\r\no Same for <Press F5...\r\no Message Base titles can be 32 chars, but only 29 show in a listing (23 if replies present).  So, added code to abbreviate the end of lines with "..."\r\no Code cleanup\r\no Cached DB conn was timing out on long sessions.  Removed caching for now.\r\no Cleaned up some data files in the menus that had corrupt data in them (caused by the way I extracted them).  No data was lost.\r\no Added commands for menu items: chat and upload.\r\n\r\nLittle stuff, but should make the system more robust.\r\n\r\nPeople need to beat on the message bases.\r\n\r\nJim\r\nWorking on them...');
+INSERT INTO `articles` VALUES (401, 417, 0, '2005-09-01 Update\r\no File downloads now work!  Only\r\n  one file is up at present, but the\r\n  rest is just a matter of organizing \r\n  the files in the menu:\r\n  CSC:SW Libs:Browse C64 SW\r\n  Select the item with F1, then F7 to\r\n  download.  Comments and such are\r\n  not implemented yet.  Client will\r\n  hang if you try them :-)\r\no Seat #13 bug is finally squashed.\r\n  Bad developer code :-)\r\no Search for replies after date and \r\n  Message Base search now work\r\no Fixed bug in message base pause\r\n  routine.  After 5 msgs, hit return for\r\n  more of the listing.\r\no More bugfixes\r\n\r\n(2005-09-01 10AM There is a bug in multi-part messages.  I will fix tonight. jlb)');
 INSERT INTO `articles` VALUES (417, 418, 401, '2005-08-31 Update\r\n\r\no Message bases are now active.\r\n  Search and Get After Date do not\r\n  work yet, they will lock the client.\r\n  This part should be considered \r\n  pre-alpha.\r\no Empty rooms are now removed.\r\n  Used to work, but broke when the\r\n  room code was switched to case\r\n  insensitive matches.\r\no RoomManager would add user to\r\n  all non-full Lobbies.  Fixed.\r\no Window size increased from 8 to 16\r\n  This should help with the "freeze"\r\n  some saw.\r\no Cleaned up String -> byte code to\r\n  be portable.\r\no Hopefully fixed bug with 13th chat\r\n  user in a room sharing ID with #12.\r\n  Please test.\r\no Added more menus.\r\no Fixed bug in List Rooms code.\r\n  System should now handle a room\r\n  list > 8 correctly and not lock up.  \r\no Database connection was dying \r\n  after long period of login.  Changed\r\n  code to get a new conn if the current\r\n  one closes.\r\n\r\nNOTE: Please use *Alpha Tester Message Base* to discuss service issues.\r\n');
 INSERT INTO `articles` VALUES (418, 0, 417, '2005-08-29 Update\r\no Moved service to Linux server.  I had\r\n  to fix some string encoding bugs,\r\n  so there may be more.\r\no Implemented System-Wide-OLMs\r\n\r\n2005-08-28 Update\r\no Implemented Identify Command in Chat.  \r\n  It will not crash the menus anymore\r\no Implemented Locate User.  Same effect\r\no Implemented rudimentary //roll\r\n  command.  Need to add support for\r\n  multiple dice\r\no Changed /msg and /me to //msg\r\n  and //me for consistency\r\no Fixed bug preventing emails with "\'"\r\n  in them being sent.\r\no Implemented //8ball command :-)\r\no Fixed //roll cmd to match QLink\r\n\r\nThere is a bug in rolling 0 sided dice.\r\nDon\'t do it, or you\'ll get disconnected\r\n\r\n2005-08-26 Update\r\no Extracted files and menus from\r\n  Raymond Day\'s traces and placed into\r\n  the menu system.  Not all data is\r\n  available\r\n\r\nNotes:\r\n\r\no Please do not /. this yet.  The\r\n  system is not complete enough, and\r\n  will just frustrate users expecting\r\n  the system to be fully operational.\r\no Please understand this service is\r\n  just in development, and you are an\r\n  alpha tester.  If you are expecting\r\n  the system to function well, please\r\n  log off and try back in a month or\r\n  so. I know this should be obvious,\r\n  but I am starting to get emails and\r\n  such from people getting frustrated\r\n  by VICE setup, tcpser configs, etc.\r\n\r\nJim');
-INSERT INTO `articles` VALUES (401, 450, 0, '2005-09-04 Update\r\n\r\nAs it was Labor Day weekend, I took some time off.  I had some fixes, but it didn\'t seem worth it to reboot the server.  I now have some stuff worth the wait:\r\n\r\no Games!  yes, preliminary games support is in place.  All the initial shipped games (not sure about RJ Casino, and CC/Hab/Puzzler are excluded) should now work.  Observing a game is not implemented, nor is the "Have Q-Link pick my partners".  List games will now work, although I think it may fail if there are too many games to list.  I also do not know the error condition if a client does not have the game requested, so make sure everyone has the correct game before starting.  As with all the newly added code, bang on it and qmail me what you find.  I assume my weakest spot is the error conditions.\r\no Restructured a lot of code to implement the game system.  Thus, try out all the chat features that used to work and make sure they still function correctly.\r\no Added more DB close commands to make a cleaner system.\r\no Changed the window size on downloads, so please try the dload again and let me know if the resulting file does not load.  I can slide the window back dwon towards the previous 8 packets from the current 16.\r\no Cleaned up errors in the Bulletin display code.\r\no Cleaned up bugs in the chat addUser code, so double adds should not happen again.\r\no More general code fixes.\r\n\r\nCode is getting somewhat feature complete for v1.0.  I want to add the following features:\r\n\r\no Uploads\r\no Comments and Docs on dloads\r\no Observe Game\r\no Pick Partners\r\no Suspend/Resume Game\r\n\r\nAnd then I think the v1.0 code will be feature complete.\r\n\r\nJim');
 
 # --------------------------------------------------------
 
@@ -184,6 +182,36 @@ CREATE TABLE `audit_log` (
 # --------------------------------------------------------
 
 #
+# Table structure for table `auditorium_talk`
+#
+
+DROP TABLE IF EXISTS `auditorium_talk`;
+CREATE TABLE `auditorium_talk` (
+  `talk_id` int(11) NOT NULL auto_increment,
+  `mnemonic` varchar(10) NOT NULL default '',
+  `text` text NOT NULL,
+  `delay` int(2) NOT NULL default '10',
+  `sort_order` int(1) NOT NULL default '1',
+  PRIMARY KEY  (`talk_id`),
+  KEY `name` (`mnemonic`)
+) TYPE=MyISAM AUTO_INCREMENT=9 ;
+
+#
+# Dumping data for table `auditorium_talk`
+#
+
+INSERT INTO `auditorium_talk` VALUES (1, 'common', 'Quantum is pleased to award a door prize at each event held in the Q-Link\r\nAuditorium. Winner names are generated by the Q-Link computers from among guests present IN the Auditorium! \r\n', 17, 1);
+INSERT INTO `auditorium_talk` VALUES (2, 'common', '   -=* Featured Events *=-\r\n   ```````````````````````\r\nMM/DD INFO Forum       9:00pm\r\nMM/DD Checkers Tourney10:00pm\r\nMM/DD Adult Vices      2:00pm\r\nMM/DD Timeworks        3:30pm\r\nMM/DD RUN Forum       11:00pm\r\nMM/DD Broderbund Forum 3:00pm\r\nMM/DD Pet Care Forum   5:30pm\r\nMM/DD Homes Today      6:00pm\r\nMM/DD YAY! It\'s WHEEL! 7:00pm\r\nMM/DD Scout? Bartlett  8:00pm', 30, 1);
+INSERT INTO `auditorium_talk` VALUES (3, 'common', 'The Q-Link Auditorium can accommodate up to 200 guests. Other PEOPLE CONNECTION rooms limit "occupancy" to 23. To see the number of members in the Auditorium, press F7 for your menu. Select "Leave the Auditorium". From that menu, you can "list" all public rooms.\r\n', 20, 1);
+INSERT INTO `auditorium_talk` VALUES (4, 'common', 'For in-depth information about the Auditorium and its special features, be sure to visit the Auditorium Green Room in JUST FOR FUN\'s PC Studio.\r\n', 10, 1);
+INSERT INTO `auditorium_talk` VALUES (5, 'common', 'The "chat" feature has been disabled in the Auditorium in order to provide more orderly events, making it easier to follow a forum or enjoy the continuity of a game-show.\r\n', 10, 1);
+INSERT INTO `auditorium_talk` VALUES (6, 'common', 'To ask a question or make a comment, use the Ask A Question feature from your menu. (Press F7; select by pressing F1.) There may be a delay before your item is aired since other members may be sending items at the same time you are.\r\n', 10, 1);
+INSERT INTO `auditorium_talk` VALUES (7, 'common', 'Items sent via Ask A Question are received in the order sent.  Speakers reserve the right to delete items that cannot be understood, are incomplete or duplicated. Use of the Ask A Question feature is governed by Q-Link\'s Terms Of Service which may be read in the free CUSTOMER SERVICE CENTER.\r\n', 10, 1);
+INSERT INTO `auditorium_talk` VALUES (8, 'max', 'Meet Max Weber. Bon? Wizant? man-about-town, a talk-show host of the future -- TODAY!\r\nMeet Max, Chain-smoking with a propensity for argyle sox, if paired, his only ties with the world of the past. Max brings you guests from a wide array of fascinating areas: fat specialists, programmers on viruses, dating services, gurus and more.  Meet Max. Easy to beat on but hard to beat.  Welcome, Max!\r\n', 10, 1);
+
+# --------------------------------------------------------
+
+#
 # Table structure for table `auditorium_text`
 #
 
@@ -195,13 +223,14 @@ CREATE TABLE `auditorium_text` (
   `end_date` datetime NOT NULL default '0000-00-00 00:00:00',
   PRIMARY KEY  (`auditorium_id`),
   KEY `start_date` (`start_date`,`end_date`)
-) TYPE=MyISAM AUTO_INCREMENT=2 ;
+) TYPE=MyISAM AUTO_INCREMENT=3 ;
 
 #
 # Dumping data for table `auditorium_text`
 #
 
-INSERT INTO `auditorium_text` VALUES (1, '  *******************************\r\n  *  WELCOME TO THE AUDITORIUM  *\r\n  *******************************\r\n\r\n Your name and the names of the \r\n speakers are the only names that\r\n will be displayed\r\n\r\n This evening, Max\'s guest is\r\n David Mercier, who\'ll be discussing\r\n Acupuncture\r\n', '0000-00-00 00:00:00', '2005-12-31 00:00:00');
+INSERT INTO `auditorium_text` VALUES (1, '  *******************************\r\n  *  WELCOME TO THE AUDITORIUM  *\r\n  *******************************\r\n\r\n Your name and the names of the \r\n speakers are the only names that\r\n will be displayed\r\n', '0000-00-00 00:00:00', '2005-12-31 00:00:00');
+INSERT INTO `auditorium_text` VALUES (2, ' This evening, Max\'s guest is\r\n David Mercier, who\'ll be discussing\r\n Acupuncture\r\n\r\n What do you think of the use of\r\n acupuncture? Have you ever had it\r\n done? Exactly how safe is it?\r\n\r\n Stay tuned and join Max onstage to\r\n ask YOUR questions in person.\r\n', '0000-00-00 00:00:00', '2005-12-31 00:00:00');
 
 # --------------------------------------------------------
 
@@ -250,8 +279,7 @@ CREATE TABLE `email` (
   `received_date` datetime NOT NULL default '0000-00-00 00:00:00',
   PRIMARY KEY  (`email_id`),
   KEY `to_id` (`recipient_id`)
-) TYPE=MyISAM AUTO_INCREMENT=142 ;
-
+) TYPE=MyISAM AUTO_INCREMENT=97 ;
 
 # --------------------------------------------------------
 
@@ -282,7 +310,7 @@ INSERT INTO `entry_types` VALUES (6, 129, 'NOCHARGE');
 INSERT INTO `entry_types` VALUES (7, 129, 'NOCHARGE');
 INSERT INTO `entry_types` VALUES (8, 129, 'NOCHARGE');
 INSERT INTO `entry_types` VALUES (9, 129, 'NOCHARGE');
-INSERT INTO `entry_types` VALUES (401, 136, 'NORMAL');
+INSERT INTO `entry_types` VALUES (401, 130, 'NORMAL');
 INSERT INTO `entry_types` VALUES (402, 129, 'NORMAL');
 INSERT INTO `entry_types` VALUES (403, 129, 'NORMAL');
 INSERT INTO `entry_types` VALUES (404, 129, 'NORMAL');
@@ -526,32 +554,6 @@ INSERT INTO `entry_types` VALUES (425242, 136, 'NORMAL');
 INSERT INTO `entry_types` VALUES (398645, 136, 'NORMAL');
 INSERT INTO `entry_types` VALUES (402959, 136, 'NORMAL');
 INSERT INTO `entry_types` VALUES (404953, 136, 'NORMAL');
-INSERT INTO `entry_types` VALUES (430, 136, 'NORMAL');
-INSERT INTO `entry_types` VALUES (421, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (422, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (423, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (424, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (425, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (426, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (427, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (428, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (429, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (431, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (432, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (433, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (434, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (435, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (436, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (437, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (438, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (439, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (440, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (441, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (442, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (443, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (444, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (445, 2, 'NORMAL');
-INSERT INTO `entry_types` VALUES (450, 136, 'NORMAL');
 
 # --------------------------------------------------------
 
@@ -580,6 +582,46 @@ INSERT INTO `files` VALUES (1, 805, 'my1stdl.prg', 'prg', 'This is the sample Do
 # --------------------------------------------------------
 
 #
+# Table structure for table `menuitems`
+#
+
+DROP TABLE IF EXISTS `menuitems`;
+CREATE TABLE `menuitems` (
+  `menuitem_id` int(11) NOT NULL auto_increment,
+  `parent_id` int(11) NOT NULL default '0',
+  `title` varchar(39) NOT NULL default '',
+  `flags` int(11) NOT NULL default '0',
+  `url` varchar(255) default NULL,
+  `sort_order` tinyint(4) NOT NULL default '1',
+  PRIMARY KEY  (`menuitem_id`)
+) TYPE=MyISAM AUTO_INCREMENT=68 ;
+
+#
+# Dumping data for table `menuitems`
+#
+
+INSERT INTO `menuitems` VALUES (6, 0, 'Just For Fun', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (7, 0, 'Learning Center', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (9, 0, 'Commodore Information Network', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (20, 9, 'All About CIN', 5, 'localhost:25232', 1);
+INSERT INTO `menuitems` VALUES (21, 9, 'SysOp\'s Corner', 5, 'bbs.jammingsignal.com', 1);
+INSERT INTO `menuitems` VALUES (22, 9, 'SIG Message Boards', 5, 'coffeemud.homeip.net', 1);
+INSERT INTO `menuitems` VALUES (23, 9, 'User Group Center', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (25, 9, 'The Commodore Report', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (26, 9, 'Meet The Press', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (52, 7, 'Electric University', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (53, 7, 'The Q-Link Classrom', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (54, 7, 'Commodore Educational Software', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (60, 6, 'Pro Picks', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (61, 6, 'Trivia Quizzers', 0, NULL, 1);
+INSERT INTO `menuitems` VALUES (62, 6, 'Movie Reviews', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (63, 6, 'Soap Opera Summaries', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (64, 6, 'RockNet(tm) Music News', 1, NULL, 1);
+INSERT INTO `menuitems` VALUES (65, 6, 'Hollywood Hotline Report', 1, NULL, 1);
+
+# --------------------------------------------------------
+
+#
 # Table structure for table `messages`
 #
 
@@ -589,14 +631,35 @@ CREATE TABLE `messages` (
   `reference_id` int(11) NOT NULL default '0',
   `parent_id` int(11) NOT NULL default '0',
   `base_id` int(11) NOT NULL default '0',
-  `title` varchar(33) NOT NULL default '',
+  `title` varchar(34) NOT NULL default '',
   `author` varchar(10) NOT NULL default '',
   `date` datetime NOT NULL default '0000-00-00 00:00:00',
   `replies` int(11) NOT NULL default '0',
   `text` text NOT NULL,
   PRIMARY KEY  (`message_id`),
   KEY `base_id` (`base_id`,`date`)
-) TYPE=MyISAM PACK_KEYS=0 AUTO_INCREMENT=37 ;
+) TYPE=MyISAM PACK_KEYS=0 AUTO_INCREMENT=13 ;
+
+# --------------------------------------------------------
+
+#
+# Table structure for table `reserved_names`
+#
+
+DROP TABLE IF EXISTS `reserved_names`;
+CREATE TABLE `reserved_names` (
+  `name` varchar(10) NOT NULL default ''
+) TYPE=MyISAM;
+
+#
+# Dumping data for table `reserved_names`
+#
+
+INSERT INTO `reserved_names` VALUES ('QGUIDE');
+INSERT INTO `reserved_names` VALUES ('SYSOP');
+INSERT INTO `reserved_names` VALUES ('System');
+INSERT INTO `reserved_names` VALUES ('Q-Link');
+INSERT INTO `reserved_names` VALUES ('QTEND');
 
 # --------------------------------------------------------
 
@@ -892,5 +955,5 @@ CREATE TABLE `users` (
   `state` varchar(40) default NULL,
   `country` varchar(40) default NULL,
   PRIMARY KEY  (`user_id`)
-) TYPE=MyISAM AUTO_INCREMENT=204 ;
+) TYPE=MyISAM AUTO_INCREMENT=80 ;
 

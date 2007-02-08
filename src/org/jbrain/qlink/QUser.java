@@ -18,35 +18,17 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Jul 25, 2005
+	Created on Sep 8, 2005
 	
  */
-package org.jbrain.qlink.chat;
+package org.jbrain.qlink;
 
-import java.util.EventObject;
+import java.util.*;
 
-public class MessageEvent extends EventObject implements RoomEvent {
-	private int _iFromSeat;
-	private String _sName;
-	private String _msg;
 
-	public MessageEvent(Object obj, int from_seat, String name,String msg) {
-		super(obj);
-		_sName=name;
-		_iFromSeat=from_seat;
-		_msg=msg;
-	}
-	
-	public int getOriginatingSeat() {
-		return _iFromSeat;
-	}
-	
-	public String getRecipientName() {
-		return _sName;
-	}
-
-	public String getMessage() {
-		return _msg;
-	}
-	
+public class QUser {
+	private String _sHandle;
+	private ArrayList _alProperties=new ArrayList();
+	private HashMap _hmSettings=new HashMap();
+	private HashMap _hmPermissions=new HashMap();
 }

@@ -34,11 +34,13 @@ import java.util.*;
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.*;
 import org.jbrain.qlink.cmd.action.*;
+import org.jbrain.qlink.db.DBUtils;
 import org.jbrain.qlink.dialog.*;
 
 
-public class Authentication extends AbstractState {
+public class Authentication extends AbstractPhaseState {
 	private static Logger _log=Logger.getLogger(Authentication.class);
+	public static final int PHASE_INITIAL=1;
 	public static final int PHASE_UPDATECODE=2;
 	protected static final int PHASE_BULLETIN = 3;
 	private static Random _random = new Random();
@@ -52,27 +54,37 @@ public class Authentication extends AbstractState {
 			_log.debug("We received " + a.getName() + " from entry dialog");
 			if(a instanceof ZA) {
 				_handle=((ZA)a).getResponse();
-				if(Character.isUpperCase(_handle.charAt(0)) 
-						&& Character.isUpperCase(_handle.charAt(1))
-						&& Character.isUpperCase(_handle.charAt(2))
-				  ) {
-					_log.debug("First 3 characters in '" + _handle + "' are uppercase");
-	            	_server.send(_newUserDialog.getErrorResponse("We're sorry, but screen names cannot contain all capital letters in the first 3 positions.  Please alter your screen name."));
-					
-				} else {
-					// uppercase the first letter...
-					_handle=_handle.substring(0,1).toUpperCase()+_handle.substring(1);
-					if(_handle.length()>10) {
-						_log.debug("Handle '" + _handle + "' is too long");
-		            	_server.send(_newUserDialog.getErrorResponse("We're sorry, but '"+ _handle + "' is too long.  Please choose a shorter name"));
-					}else if(addUser()) {
-						_server.setHandle(_handle);
-						_server.send(((EntryDialog)d).getSuccessResponse("Congratulations, " + _handle + "!\n\nWe hope you enjoy your visit to Q-LINK."));
-						return true;
-					} else {
-		            	_server.send(_newUserDialog.getErrorResponse("We're sorry, but '" + _handle + "' is already in use.  Please choose another name"));
+				// uppercase the first letter... and trim
+				_handle=_handle.substring(0,1).toUpperCase()+_handle.substring(1).trim();
+				if(containsInvalidChars(_handle)) {
+					_log.debug("'" + _handle + "' contains invalid characters");
+	            	_server.send(_newUserDialog.getErrorResponse("We're sorry, but screen names can only contains letters, digits, space, '+', '-', or '.' characters.  Please select another name."));
+				} else if(_handle.charAt(0)=='.') {
+					_log.debug("'" + _handle + "' contains invalid characters at beginning");
+            	_server.send(_newUserDialog.getErrorResponse("We're sorry, but screen names cannot start with a '.' character.  Please select another name."));
+				} else
+					try {
+						if(containsReservedWords(_handle)) {
+							_log.debug("'" + _handle + "' contains a reserved word");
+							_server.send(_newUserDialog.getErrorResponse("We're sorry, but your choice contains a reserved word.  Please select another name."));
+						} else if(_handle.length()>10) {
+							_log.debug("Handle '" + _handle + "' is too long");
+							_server.send(_newUserDialog.getErrorResponse("We're sorry, but '"+ _handle + "' is too long.  Please select a shorter name"));
+						} else {
+							// adding name.
+							if(addUser()) {
+								_server.setHandle(_handle);
+								_server.send(((EntryDialog)d).getSuccessResponse("Congratulations, " + _handle + "!\n\nWe hope you enjoy your visit to Q-LINK."));
+								return true;
+							} else {
+						    	_server.send(_newUserDialog.getErrorResponse("We're sorry, but '" + _handle + "' is already in use.  Please select another name"));
+							}
+						}
+					} catch (SQLException e) {
+						// something very bad happened... We cannot continue.
+						_log.error("Error during reserved word lookup",e);
+						_server.terminate();
 					}
-				}
 			} else if(a instanceof D2) {
 	    		_server.send(new SendAccountNumber(_account,_handle));
 	    		_server.send(new ClearExtraAccounts());
@@ -81,6 +93,55 @@ public class Authentication extends AbstractState {
     			_server.setState(Authentication.this);
 	    		setPhase(PHASE_UPDATECODE);
 				return true;
+			}
+			return false;
+		}
+
+		private boolean containsReservedWords(String handle) throws SQLException {
+	        Connection conn=null;
+	        Statement stmt = null;
+	        ResultSet rs = null;
+	        
+	        try {
+	        	_log.debug("Checking for reserved words");
+	        	conn=DBUtils.getConnection();
+	            stmt = conn.createStatement();
+                rs=stmt.executeQuery("SELECT name from reserved_names");
+                if(rs.next()) {
+                	// check the found names
+                	do {
+                		if(handle.toLowerCase().indexOf(rs.getString("name").toLowerCase())> -1)
+                			return true;
+                	} while(rs.next());
+	        	}
+	        } finally {
+	        	DBUtils.close(rs);
+	            if (stmt != null) {
+	                try {
+	                    stmt.close();
+	                } catch (SQLException sqlEx) { }// ignore }
+	                stmt = null;
+	            }
+	            if(conn!=null) 
+	            	try {
+	            		conn.close();
+	            	} catch (SQLException e) {	}
+	        }
+	        return false;
+		}
+
+		private boolean containsInvalidChars(String handle) {
+			boolean rc=false;
+			char ch;
+			for(int i=0;i<handle.length();i++) {
+				ch=handle.charAt(i);
+				if(!(Character.isLetterOrDigit(ch)
+					|| ch=='-'
+					|| ch==' '
+					|| ch=='+'
+					|| ch=='.'
+					))
+					return true;
 			}
 			return false;
 		}
@@ -99,7 +160,7 @@ public class Authentication extends AbstractState {
 	}
 	
 	public Authentication(QServer server) {
-		super(server);
+		super(server,PHASE_INITIAL);
 	}
 
 	public boolean execute(Action a) throws IOException {
@@ -113,7 +174,7 @@ public class Authentication extends AbstractState {
         			_account=((Login)a).getAccount();
         			_code=((Login)a).getCode();
         			if(_log.isInfoEnabled()) {
-        				_log.info("Account: " + _account + " presents access code: " + _code + " for validation");
+        				_log.info("Account: " + _account + " presents access code: '" + _code + "' for validation");
         			}
         			validateUser();
         			rc=true;
@@ -142,7 +203,7 @@ public class Authentication extends AbstractState {
         if(_log.isDebugEnabled())
         	_log.debug("Updating account '" + _account + "' access code to: " + _code);
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             if(stmt.execute("UPDATE users set access_code='" + _code + "' WHERE user_id=" + _iUserID)) {
     			_log.info("PHASE: Updating access code on disk");
@@ -175,7 +236,7 @@ public class Authentication extends AbstractState {
         try {
         	try {
         		id=Long.parseLong(_account);
-            	conn=_server.getDBConnection();
+            	conn=DBUtils.getConnection();
                 stmt = conn.createStatement();
                 rs=stmt.executeQuery("SELECT users.user_id,users.access_code,users.active,accounts.active,accounts.handle from accounts,users WHERE accounts.user_id=users.user_id AND accounts.account_id=" + id);
         	} catch (NumberFormatException e) {
@@ -198,6 +259,10 @@ public class Authentication extends AbstractState {
 		                	// if these fail, we're not too worried
 		                    stmt.execute("UPDATE users set last_access=now() WHERE user_id=" + _iUserID);
 		                    stmt.execute("UPDATE accounts set last_access=now() WHERE account_id=" + id);
+		                    
+		                    // get new code
+		                    // TODO enable this at appropriate time.
+		                    //_code=getNewCode();
 	
 		                	// update access code.
 		    	    		_server.send(new ChangeAccessCode(_code));
@@ -259,18 +324,18 @@ public class Authentication extends AbstractState {
         ResultSet rs = null;
         
         try {
-        	conn=_server.getDBConnection();
+        	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Checking for duplicate handle");
             rs=stmt.executeQuery("SELECT accounts.account_id FROM accounts WHERE accounts.handle = '" + _handle + "'");
             if(rs.next()) {
             	// someone using this handle, try another.
-            	closeRS(rs);
+            	DBUtils.close(rs);
             	_log.info("Handle '" + _handle + "' already in use");
             } else {
             	// good handle, insert user record.
             	_log.debug("Adding new user");
-            	closeRS(rs);
+            	DBUtils.close(rs);
             	String code=getNewCode();
                 stmt.execute("INSERT INTO users (access_code,active,create_date,last_access,last_update,orig_account,orig_code) VALUES ('" + code + "','Y',now(),now(),now(),'" + _account + "','" + _code + "')");
                 if(stmt.getUpdateCount()>0) {
@@ -280,7 +345,7 @@ public class Authentication extends AbstractState {
                 	rs=stmt.executeQuery("SELECT user_id from users WHERE orig_account='" + _account + "' AND access_code='" + _code + "'");
                 	if(rs.next()) {
                 		_iUserID=rs.getInt("user_id");
-                		closeRS(rs);
+                		DBUtils.close(rs);
                         stmt.execute("INSERT INTO accounts (user_id,active,handle,create_date,last_access,last_update) VALUES (" + _iUserID + ",'Y','" + _handle + "',now(),now(),now())");
                         if(stmt.getUpdateCount()>0) {
                         	// get account number.
@@ -314,18 +379,9 @@ public class Authentication extends AbstractState {
         	_log.error("SQL Exception",e);
         	// big time error, send back error string and close connection
         } finally {
-        	closeRS(rs);
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException sqlEx) { }// ignore }
-
-                stmt = null;
-            }
-            if(conn!=null) 
-            	try {
-            		conn.close();
-            	} catch (SQLException e) {	}
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
         }
         return rc;
 		

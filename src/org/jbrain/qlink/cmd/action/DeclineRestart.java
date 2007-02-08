@@ -18,18 +18,22 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Jul 28, 2005
+	Created on Jul 22, 2005
 	
  */
-package org.jbrain.qlink.chat;
+package org.jbrain.qlink.cmd.action;
+
+import org.jbrain.qlink.cmd.CRCException;
 
 
-class LobbyDelegate extends RoomDelegate {
+public class DeclineRestart extends AbstractAction {
 
-	/**
-	 * @param name
-	 */
-	public LobbyDelegate(String name, boolean bLocked) {
-		super(name,true, bLocked);
+	public static final String MNEMONIC = "GT";
+	public DeclineRestart(byte[] data, int start, int len) throws CRCException {
+		super(data, start, len);
+	}
+	
+	public DeclineRestart() {
+		super(MNEMONIC);
 	}
 }
