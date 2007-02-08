@@ -24,7 +24,7 @@
 package org.jbrain.qlink.cmd;
 
 
-public class SequenceError extends AbstractCommand {
+public class SequenceError extends AbstractCheckedCommand {
 
 	public static final byte CMD=0x25;
 

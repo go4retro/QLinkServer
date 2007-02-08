@@ -29,52 +29,41 @@ import java.util.ArrayList;
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.*;
 import org.jbrain.qlink.cmd.action.*;
+import org.jbrain.qlink.user.QHandle;
+import org.jbrain.qlink.user.UserManager;
 
 public class SendOLMState extends AbstractState {
 	private static Logger _log=Logger.getLogger(SendOLMState.class);
-
-	/**
-	 * 
-	 * @uml.property name="_intState"
-	 * @uml.associationEnd multiplicity="(0 1)"
-	 */
 	private QState _intState;
-
-	private String _sRecipient;
-
-	/**
-	 * 
-	 * @uml.property name="_alOLMText"
-	 * @uml.associationEnd elementType="java.lang.String" multiplicity="(0 -1)"
-	 */
+	private QHandle _recipient;
 	private ArrayList _alOLMText = new ArrayList();
 
 	
-	public SendOLMState(QServer server, String recipient) {
-		super(server);
-		_sRecipient=recipient;
+	public SendOLMState(QSession session, QHandle recipient) {
+		super(session);
+		_recipient=recipient;
 }
 	
 	public void activate() throws IOException {
-		_log.debug("User requested to send an OLM to " + _sRecipient);
-		//if(_server.getHandle().toLowerCase().equals(_sRecipient)) {
+		_log.debug("User requested to send an OLM to " + _recipient);
+		//if(_session.getHandle().toLowerCase().equals(_sRecipient)) {
 			//_log.debug("User trying to send OLM to him/herself");
-			//_server.send(new SendSYSOLM("You cannot send an OLM to yourself"));
+			//_session.send(new SendSYSOLM("You cannot send an OLM to yourself"));
 		//} else
-		if(_server.getIDByName(_sRecipient)==-1) {
+		if(UserManager.getAccount(_recipient)==null) {
 			_log.debug("OLM Error: No such user");
-			_server.send(new UserInvalid());
-		} else if(!_server.isUserOnline(_sRecipient)) {
+			_session.send(new UserInvalid());
+		} else if(!_session.getServer().isUserOnline(_recipient)) {
 			_log.debug("OLM Error: User is not online");
-			_server.send(new UserNotOnline());
-		} else if(_server.canReceiveOLMs(_sRecipient)) {
-			_intState=_server.getState();
+			_session.send(new UserNotOnline());
+		} else if(_session.getServer().canReceiveOLMs(_recipient)) {
+			_intState=_session.getState();
 			super.activate();
 			_log.debug("User can receive OLMs");
-			_server.send(new SendOLMAck(_server.getHandle()));
+			_session.send(new SendOLMAck(_session.getHandle().toString()));
 		} else {
 			_log.debug("OLM Error: User cannot receive OLMs");
-			_server.send(new SendOLMNAck());
+			_session.send(new SendOLMNAck());
 		}
 	}
 	
@@ -92,15 +81,16 @@ public class SendOLMState extends AbstractState {
 			String text=((OE)a).getData();
 			_log.debug("OLM End: " + text);
 			_alOLMText.add(text);
+			_alOLMText.add("End of Message - Press F5 to cancel");
 			// now, send to other user.
-			_server.sendOLM(_sRecipient,(String[])_alOLMText.toArray(new String[0]));
+			_session.getServer().sendOLM(_recipient,(String[])_alOLMText.toArray(new String[0]));
 			// restore state
-			_server.setState(_intState);
+			_session.setState(_intState);
 			rc=true;
 		} else if(a instanceof OLMCancelled) {
 			// email is cancelled
-			_log.debug("Cancelled OLM to " + _sRecipient);
-			_server.setState(_intState);
+			_log.debug("Cancelled OLM to " + _recipient);
+			_session.setState(_intState);
 		} else {
 			rc=_intState.execute(a);
 		}

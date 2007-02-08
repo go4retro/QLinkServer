@@ -24,7 +24,7 @@
 package org.jbrain.qlink.cmd;
 
 
-public class Ping extends AbstractCommand {
+public class Ping extends AbstractCheckedCommand {
 
 	public static final byte CMD_PING=0x26;
 

@@ -31,9 +31,10 @@ import java.sql.Statement;
 import java.util.*;
 
 import org.apache.log4j.Logger;
-import org.jbrain.qlink.QServer;
+import org.jbrain.qlink.QSession;
 import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.db.DBUtils;
+import org.jbrain.qlink.user.QHandle;
 
 
 public abstract class AbstractState implements QState {
@@ -41,18 +42,18 @@ public abstract class AbstractState implements QState {
 
 	/**
 	 * 
-	 * @uml.property name="_server"
+	 * @uml.property name="_session"
 	 * @uml.associationEnd multiplicity="(1 1)"
 	 */
-	//public static final int PHASE_INITIAL=1;
-	protected QServer _server;
+	//public static final int PHASE_LOGIN=1;
+	protected QSession _session;
 
-	public AbstractState(QServer server) {
-		_server=server;
+	public AbstractState(QSession session) {
+		_session=session;
 	}
 	
 	public void activate() throws IOException {
-		_server.setState(this);
+		_session.setState(this);
 	}
 	
 	public void passivate() throws IOException {
@@ -63,49 +64,47 @@ public abstract class AbstractState implements QState {
 		boolean rc=false;
 		
 		if(a instanceof LostConnection) {
-			_server.terminate();
+			_session.terminate();
 			rc=true;
 		} else if(a instanceof SuspendServiceAck) {
 			_log.debug("Sending ACK for Suspend Service Request");
-			_server.send(new SuspendServiceAck());
-			_server.suspend();
+			_session.send(new SuspendServiceAck());
+			_session.suspend();
 			rc=true;
 		} else if(a instanceof ResumeService) {
 			_log.debug("Resuming service");
-			_server.resume();
+			_session.resume();
 			//_log.debug("Sending ACK for Resume Service Request");
-			//_server.send(new ResumeService());
+			//_session.send(new ResumeService());
 			rc=true;
 		} else if(a instanceof Logoff) {
 			_log.debug("Sending ACK for Logoff Request");
-			_server.send(new LogoffAck(_server.getStartTime(),new Date()));
-			_server.terminate();
+			_session.send(new LogoffAck(_session.getStartTime(),new Date()));
+			_session.terminate();
 			rc=true;
 		} else if(a instanceof SendEmail) {
 			String recipient=((SendEmail)a).getData();
-			state=new SendEmailState(_server, recipient);
+			state=new SendEmailState(_session, new QHandle(recipient));
 			state.activate();
 			rc=true;
 		} else if(a instanceof ReadEmail) {
-			state=new ReadEmailState(_server);
+			state=new ReadEmailState(_session);
 			state.activate();
 			rc=true;
 		} else if(a instanceof SendOLM) {
 			String recipient=((SendOLM)a).getData();
-			state=new SendOLMState(_server,recipient);
+			state=new SendOLMState(_session,new QHandle(recipient));
 			state.activate();
 			rc=true;
 		} else if(a instanceof ReadOLM) {
 			String id=((ReadOLM)a).getData();
-			boolean bSysMsg=id.startsWith(QServer.MESSAGE_SYSTEM);
 			// system OKs reading an OLM
-			String[] l=_server.getOLM(id);
+			String[] l=_session.getOLM();
+			//String[] l=_session.getOLM(id);
 			int size=l.length;
 			for(int i=0;i<size;i++) {
-				_server.send(new OLMText(id,l[i],bSysMsg && (i+1==size)));
+				_session.send(new OLMText(id,l[i],(i+1==size)));
 			}
-			if(!bSysMsg)
-				_server.send(new OLMText(id,"End of Message - Press F5 to cancel",true));
 			rc=true;
 		}
 		return rc;
@@ -122,8 +121,8 @@ public abstract class AbstractState implements QState {
         try {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
-            _log.debug("Checking for email to " + _server.getHandle());
-            rs=stmt.executeQuery("SELECT email_id FROM email WHERE unread='Y' AND recipient_id=" + _server.getAccountID() + " LIMIT 1");
+            _log.debug("Checking for email to " + _session.getHandle());
+            rs=stmt.executeQuery("SELECT email_id FROM email WHERE unread='Y' AND recipient_id=" + _session.getAccountID() + " LIMIT 1");
             return rs.next();
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);

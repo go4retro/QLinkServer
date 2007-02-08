@@ -31,7 +31,6 @@ public class CRCException extends Exception {
 	 */
 	public CRCException() {
 		super();
-		// TODO Auto-generated constructor stub
 	}
 
 	/**
@@ -39,7 +38,6 @@ public class CRCException extends Exception {
 	 */
 	public CRCException(String arg0) {
 		super(arg0);
-		// TODO Auto-generated constructor stub
 	}
 
 	/**
@@ -47,7 +45,6 @@ public class CRCException extends Exception {
 	 */
 	public CRCException(Throwable arg0) {
 		super(arg0);
-		// TODO Auto-generated constructor stub
 	}
 
 	/**
@@ -56,7 +53,6 @@ public class CRCException extends Exception {
 	 */
 	public CRCException(String arg0, Throwable arg1) {
 		super(arg0, arg1);
-		// TODO Auto-generated constructor stub
 	}
 
 }

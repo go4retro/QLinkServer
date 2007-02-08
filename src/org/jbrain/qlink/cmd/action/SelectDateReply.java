@@ -47,7 +47,7 @@ public class SelectDateReply extends AbstractMenuItem {
 		try {
 			_date=sdf.parse(getString(data,start+15,len-15));
 		} catch (ParseException e) {
-			// TODO What shoudl we send back
+			// TODO What should we send back
 			throw new IllegalArgumentException("Invalid Date String");
 		}
 	}

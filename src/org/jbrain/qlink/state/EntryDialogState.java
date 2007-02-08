@@ -35,8 +35,8 @@ public class EntryDialogState extends AbstractDialogState {
 	private static Logger _log=Logger.getLogger(EntryDialogState.class);
 	public static final int PHASE_TERMINATE = 4;
 	
-	public EntryDialogState(QServer server, AbstractDialog dialog, DialogCallBack callback) {
-		super(server,dialog,callback);
+	public EntryDialogState(QSession session, EntryDialog dialog, DialogCallBack callback) {
+		super(session,dialog,callback);
 	}
 	
 	public boolean execute(Action a) throws IOException {
@@ -50,8 +50,13 @@ public class EntryDialogState extends AbstractDialogState {
         			rc=true;
         			_log.debug("Dispatching response to callback");
         			if(_callback.handleResponse(_dialog,a)) {
-        				_log.info("PHASE: waiting to close dialog");
+        				if(_dialog.getDialogType()==AbstractDialog.TYPE_MENU) {
+	        				_log.info("PHASE: closing dialog");
+        				} else {
+	        				_log.info("PHASE: waiting to close dialog");
+        				}
         				setPhase(PHASE_TERMINATE);
+        				rc=true;
         			}
         		}
         		break;

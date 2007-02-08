@@ -26,29 +26,27 @@ package org.jbrain.qlink.chat;
 import java.util.EventObject;
 
 public class GameCommEvent extends EventObject implements RoomEvent {
-	private int _iSeat;
+	private int _seat;
 	private String _sText;
-	private String _sHandle;
+	private String _name;
 
-	public GameCommEvent(Object obj,int seat, String handle, String text) {
+	public GameCommEvent(Object obj,int id, String name, String text) {
 		super(obj);
-		_iSeat=seat;
-		_sHandle=handle;
+		_seat=id;
+		_name=name;
 		_sText=text;
 	}
 	
-	public int getSeat() {
-		return _iSeat;
+	public int getSeatID() {
+		return _seat;
+	}
+	
+	public String getName() {
+		return _name;
 	}
 	
 	public String getText() {
 		return _sText;
 	}
 
-	/**
-	 * @return
-	 */
-	public String getHandle() {
-		return _sHandle;
-	}
 }

@@ -39,8 +39,8 @@ public abstract class AbstractAddAccount extends AbstractAction {
 			throw new IllegalArgumentException("Handle is null");
 		else if(handle.length()>10)
 			throw new IllegalArgumentException("Handle length > 10");
-		else if(handle.length()<3)
-			throw new IllegalArgumentException("Handle length < 3");
+		else if(handle.length()<1)
+			throw new IllegalArgumentException("Handle length < 1");
 		_sHandle=handle;
 	}
 	

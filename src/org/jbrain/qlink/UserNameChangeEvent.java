@@ -18,24 +18,45 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Jul 22, 2005
+	Created on Oct 6, 2005
 	
  */
-package org.jbrain.qlink.cmd.action;
+package org.jbrain.qlink;
 
-import org.jbrain.qlink.cmd.CRCException;
+import java.util.EventObject;
+
+import org.jbrain.qlink.user.QHandle;
 
 
-public class MR extends AbstractAction {
+public class UserNameChangeEvent extends EventObject implements SessionEvent {
 
-	public static final String MNEMONIC = "MR";
-	/**
-	 * @param data
-	 * @param start
-	 * @param len
-	 * @throws CRCException
-	 */
-	public MR(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
+	private QHandle _oldHandle;
+	private QHandle _newHandle;
+
+	public UserNameChangeEvent(QSession session, QHandle oldValue, QHandle newValue) {
+		super(session);
+		_oldHandle=oldValue;
+		_newHandle=newValue;
 	}
+
+	/**
+	 * @return
+	 */
+	public QHandle getNewHandle() {
+		return _newHandle;
+	}
+
+	/**
+	 * @return
+	 */
+	public QSession getSession() {
+		return (QSession)this.getSource();
+	}
+
+	/**
+	 * @return
+	 */
+	public QHandle getOldHandle() {
+		return _oldHandle;	}
+
 }

@@ -23,30 +23,40 @@
  */
 package org.jbrain.qlink.chat;
 
+import org.jbrain.qlink.user.QHandle;
 
-public class SeatInfo {
-	private String _sName;
+
+public class SeatInfo implements QSeat {
+	private QHandle _handle;
 	private int _iSeat;
+	private ChatProfile _profile;
 	private boolean _bGamePending;
+	private boolean _bIgnore;
+	private static ChatProfile _defProfile=new ChatProfile();
 	
-	public SeatInfo(String name, int seat) {
-		_sName=name;
+	public SeatInfo(QHandle handle) {
+		this(handle,-1,_defProfile);
+	}
+	public SeatInfo(QHandle handle, int seat, ChatProfile profile) {
+		_handle=handle;
 		_iSeat=seat;
+		_profile=profile;
+		_bIgnore=false;
 		_bGamePending=false;
 	}
 
 	/**
 	 * @return
 	 */
-	public int getSeat() {
+	public int getSeatID() {
 		return _iSeat;
 	}
 	
 	/**
 	 * @return
 	 */
-	public String getHandle() {
-		return _sName;
+	public QHandle getHandle() {
+		return _handle;
 	}
 	
 	void setGameStatus(boolean b) {
@@ -58,6 +68,24 @@ public class SeatInfo {
 	 */
 	public boolean isInGame() {
 		return _bGamePending;
+	}
+
+	/**
+	 * @return
+	 */
+	public ChatProfile getProfile() {
+		return _profile;
+	}
+
+	/**
+	 * @param b
+	 */
+	void setIgnore(boolean b) {
+		_bIgnore=b;
+	}
+	
+	public boolean isIgnored() {
+		return _bIgnore;
 	}
 	
 }

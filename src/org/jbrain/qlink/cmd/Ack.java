@@ -24,7 +24,7 @@
 package org.jbrain.qlink.cmd;
 
 // two bytes in payload are version/release
-public class Ack extends AbstractCommand {
+public class Ack extends AbstractCheckedCommand {
 
 	public static final byte CMD_RESETACK=0x22;
 

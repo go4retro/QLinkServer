@@ -35,7 +35,7 @@ public class AddAccountInSlot extends AbstractAction {
 	}
 	public byte[] getBytes() {
 		byte[] data=new byte[11];
-		data[10] = (byte)(0x81 + _iSlot);
+		data[10] = (byte)(0x80 + _iSlot);
 		finalizeCmd(data);
 		return data;
 	}	

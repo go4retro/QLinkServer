@@ -23,7 +23,7 @@
  */
 package org.jbrain.qlink.state;
 
-import org.jbrain.qlink.QServer;
+import org.jbrain.qlink.QSession;
 
 
 public abstract class AbstractPhaseState extends AbstractState {
@@ -34,8 +34,8 @@ public abstract class AbstractPhaseState extends AbstractState {
 	 * @param server
 	 * @param phase
 	 */
-	public AbstractPhaseState(QServer server, int phase) {
-		super(server);
+	public AbstractPhaseState(QSession session, int phase) {
+		super(session);
 		_iPhase=phase;
 	}
 

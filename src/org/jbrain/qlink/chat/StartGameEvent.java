@@ -26,29 +26,21 @@ package org.jbrain.qlink.chat;
 import java.util.EventObject;
 
 public class StartGameEvent extends EventObject implements RoomEvent {
-	private int _iSeat;
-	private String _sHandle;
+	private QSeat _seat;
 	private byte[] _order;
 
-	public StartGameEvent(Object obj,int seat, String handle, byte[] order) {
+	public StartGameEvent(Object obj,QSeat seat, byte[] order) {
 		super(obj);
-		_iSeat=seat;
-		_sHandle=handle;
+		_seat=seat;
 		_order=order;
 	}
 	
-	public int getSeat() {
-		return _iSeat;
+	public QSeat getSeat() {
+		return _seat;
 	}
 	
 	public byte[] getPlayOrder() {
 		return _order;
 	}
 
-	/**
-	 * @return
-	 */
-	public String getHandle() {
-		return _sHandle;
-	}
 }

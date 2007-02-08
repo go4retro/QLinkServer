@@ -33,28 +33,25 @@ public abstract class AbstractDialog {
 	public static final int FORMAT_CENTERED = TextFormatter.FORMAT_CENTERED;
 	public static final int FORMAT_NONE = TextFormatter.FORMAT_NONE;
 	public static final int FORMAT_JUSTIFIED = TextFormatter.FORMAT_JUSTIFIED;
+	public static final int TYPE_LOGIN = 1;
+	public static final int TYPE_MENU = 2;
+	public static final int TYPE_CHAT = 3;
 
 	private String _sName;
-
-	/**
-	 * 
-	 * @uml.property name="_text"
-	 * @uml.associationEnd multiplicity="(1 1)"
-	 */
 	protected TextFormatter _text;
 
 	protected int _iFormat;
-	private boolean _bLogin;
+	private int _iType;
 
-	public AbstractDialog(String name, boolean bLogin) {
-		this(name, bLogin, FORMAT_NONE);
+	public AbstractDialog(String name, int dialogType) {
+		this(name, dialogType, FORMAT_NONE);
 	}
 	
-	public AbstractDialog(String name, boolean bLogin, int format) {
+	public AbstractDialog(String name, int dialogType, int format) {
 		_sName=name;
 		_text=new TextFormatter(format);
 		_iFormat=format;
-		_bLogin=bLogin;
+		_iType=dialogType;
 	}
 	
 	public String getName() {
@@ -66,10 +63,12 @@ public abstract class AbstractDialog {
 	}
 	
 	public Action getPrepAction() {
-		if(_bLogin)
-			return new CreateLoginDialog(_sName);
-		else
-			return new CreateChatDialog(_sName);
+		switch(_iType) {
+			case TYPE_CHAT:
+				return new CreateChatDialog(_sName);
+			default:
+				return new CreateDialog(_sName);
+		}
 	}
 
 	public Action[] getTextActions() {
@@ -77,21 +76,37 @@ public abstract class AbstractDialog {
 		int size=l.size()-1;
 		Action[] a=new Action[size];
 		for(int i=0;i<size;i++) {
-			if(_bLogin)
-				a[i]=new LoginDialogText(_sName,(String)l.get(i));
-			else
-				a[i]=new ChatDialogText(_sName,(String)l.get(i));
+			switch(_iType) {
+				case TYPE_CHAT:
+					a[i]=new ChatDialogText(_sName,(String)l.get(i));
+					break;
+				default:
+					a[i]=new DialogText(_sName,(String)l.get(i));
+				break;
+			}
 		}
 		return a;
 	}
+	
+	public int getDialogType() {
+		return _iType;
+	}
 
-	/**
-	 * @return
-	 * 
-	 * @uml.property name="responseAction"
-	 * @uml.associationEnd multiplicity="(0 1)"
-	 */
 	public abstract Action getResponseAction();
 
+	public Action[] getSuccessResponse(String string) {
+		TextFormatter tf=new TextFormatter();
+		tf.add(string);
+		tf.add("\n         <PRESS F5 TO CONTINUE>");
+		List l=tf.getList();
+		int size=l.size();
+		Action[] actions=new Action[size];
+		for(int i=0;i<(size-1);i++) {
+			actions[i]=new DialogText(getName(),(String)l.get(i));
+		}
+		actions[size-1]=new PauseRequest(getName(),(String)l.get(size-1));
+		return actions;
+	}
+	
 	
 }

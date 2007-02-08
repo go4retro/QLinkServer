@@ -23,409 +23,51 @@
  */
 package org.jbrain.qlink.chat;
 
-import java.util.*;
-
 import org.apache.log4j.Logger;
-import org.jbrain.qlink.QServer;
-import org.jbrain.qlink.util.QuotedStringTokenizer;
+import org.jbrain.qlink.user.QHandle;
 
-class RoomDelegate {
+public class RoomDelegate extends AbstractRoomDelegate {
 	private static Logger _log=Logger.getLogger(RoomDelegate.class);
-	public static final String SYS_NAME = "System";
 	public static final int ROOM_CAPACITY=23;
-	private String _sName;
-
-	/**
-	 * 
-	 * @uml.property name="_users"
-	 * @uml.associationEnd multiplicity="(0 -1)"
-	 */
-	private SeatInfo[] _users = new SeatInfo[ROOM_CAPACITY];
-
-	/**
-	 * 
-	 * @uml.property name="_htUsers"
-	 * @uml.associationEnd qualifier="handle:java.lang.String org.jbrain.qlink.chat.SeatInfo"
-	 * multiplicity="(0 1)"
-	 */
-	private Hashtable _htUsers = new Hashtable();
-
-	/**
-	 * 
-	 * @uml.property name="_listeners"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.RoomEventListener" multiplicity=
-	 * "(0 -1)"
-	 */
-	protected ArrayList _listeners = new ArrayList();
-
-	private boolean _bPublic;
-	private boolean _bLocked;
-	private static Random _die=new Random();
-	private static String[] _sResponses=new String[20];
-
-	/**
-	 * 
-	 * @uml.property name="_userGame"
-	 * @uml.associationEnd inverse="_room:org.jbrain.qlink.chat.GameDelegate" multiplicity=
-	 * "(0 -1)"
-	 */
+	protected SeatInfo[] _users=new SeatInfo[ROOM_CAPACITY];
 	private GameDelegate[] _userGame = new GameDelegate[ROOM_CAPACITY];
-
-	/**
-	 * 
-	 * @uml.property name="_alGames"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.GameDelegate" multiplicity=
-	 * "(0 -1)"
-	 */
-	private ArrayList _alGames = new ArrayList();
-
-	
-	static {
-		// probably should go into a DB or something
-		_sResponses[0]="Signs point to yes.";
-		_sResponses[1]="Yes.";
-		_sResponses[2]="Reply hazy, try again.";
-		_sResponses[3]="Without a doubt.";
-		_sResponses[4]="My sources say no.";
-		_sResponses[5]="As I see it, yes.";
-		_sResponses[6]="You may rely on it.";
-		_sResponses[7]="Concentrate and ask again.";
-		_sResponses[8]="Outlook not so good.";
-		_sResponses[9]="It is decidedly so.";
-		_sResponses[10]="Better not tell you now.";
-		_sResponses[11]="Very doubtful.";
-		_sResponses[12]="Yes - definitely.";
-		_sResponses[13]="It is certain.";
-		_sResponses[14]="Cannot predict now.";
-		_sResponses[15]="Most likely.";
-		_sResponses[16]="Ask again later.";
-		_sResponses[17]="My reply is no.";
-		_sResponses[18]="Outlook good.";
-		_sResponses[19]="Don't count on it.";
-	}
 	
 	public RoomDelegate(String name, boolean bPublic, boolean bLocked) {
-		if(_log.isDebugEnabled())
-			_log.debug("Creating " + (bLocked?"locked":"unlocked") + " " + (bPublic?"public":"private") + " room: " + name);
-		_sName=name;
-		_bPublic=bPublic;
-		_bLocked=bLocked;
-	}
-
-	/**
-	 * @return
-	 */
-	public String getName() {
-		return _sName;
-	}
-
-	/**
-	 * @return
-	 */
-	public int getPopulation() {
-		if(_log.isDebugEnabled())
-			_log.debug("Population of '" + _sName + "' is " + _htUsers.size());
-		return _htUsers.size();
+		super(name,bPublic,bLocked);
 	}
 
 	/**
 	 * @param handle
+	 * @param delegate
+	 * @return
+	 * @throws UserNotInRoomException
+	 * @throws UserMismatchException
 	 */
-	public int addUser(String handle) {
+	public QSeat addUserToGame(QHandle handle, GameDelegate game) throws UserNotInRoomException {
+		// we need to check seat and handle to make sure they match.
 		synchronized(_htUsers) {
-			SeatInfo user=getSeatInfo(handle);
-			if(user==null) {
-				if(_log.isDebugEnabled())
-					_log.debug("Adding '" + handle + "' to room: " + _sName);
-				if(!isFull()) {
-					for(int i=0;i<ROOM_CAPACITY;i++){
-						if(_users[i]==null) {
-							user=new SeatInfo(handle,i);
-							_users[i]=user;
-							_htUsers.put(handle.toLowerCase(),user);
-							processEvent(new JoinEvent(this,JoinEvent.EVENT_JOIN,i,user.getHandle()));
-							return i;
-						}
-					}
-				}
-				return -1;
-			} else {
-				if(_log.isDebugEnabled())
-					_log.warn("'" + handle + "' is already in room: " + _sName);
-				return user.getSeat();
+			SeatInfo info=(SeatInfo)getSeatInfo(handle);
+			if(info==null)
+				throw new UserNotInRoomException();
+			if(!info.isInGame()) {
+				info.setGameStatus(true);
+				_userGame[info.getSeatID()]=game;
+				return info;
 			}
+			return null;
 		}
 	}
 
-	/**
-	 * @return
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.AbstractRoomDelegate#getCapacity()
 	 */
-	public boolean isFull() {
-		return getPopulation()==ROOM_CAPACITY;
+	public int getCapacity() {
+		return ROOM_CAPACITY;
 	}
 
-	public SeatInfo[] getSeatInfoList() {
+	public QSeat[] getSeatInfoList(QSeat seat) {
 		return (SeatInfo[])_htUsers.values().toArray(new SeatInfo[0]);
 	
-	}
-	
-	public synchronized void removeUser(int seat) {
-		synchronized(_htUsers) {
-			SeatInfo user=getSeatInfo(seat);
-			// was this seat filled?
-			if(user!=null) {
-				if(_log.isDebugEnabled())
-					_log.debug("Removing '" + user.getHandle() + "' from room: " + _sName);
-				_htUsers.remove(user.getHandle().toLowerCase());
-				_users[seat]=null;
-				// are they in a game?
-				if(_userGame[seat]!= null) {
-					_userGame[seat].leave(seat);
-				}
-				processEvent(new JoinEvent(this,JoinEvent.EVENT_LEAVE,seat,user.getHandle()));
-			}
-		}
-	}
-	
-	public void say(int seat, String text) {
-		if(text.startsWith("//") || text.startsWith("=q")) {
-			processCommand(seat,text);
-		} else {
-			processEvent(new ChatEvent(this,seat,text));
-		}
-	}
-	
-	protected void processCommand(int seat, String text) {
-		ArrayList alMsg=new ArrayList();
-		String error=null;
-		String name=null,msg=null;
-		QuotedStringTokenizer st=new QuotedStringTokenizer(text.substring(2));
-		String cmd=st.nextToken(" ").toLowerCase();
-		int pos=0;
-		if(cmd.startsWith("sysmsg") && !this.isPublicRoom()) {
-			// Send SYSOLM;
-			if(st.hasMoreTokens())
-				msg=st.nextToken("\n");
-			if(msg!= null) {
-				_log.debug("Executing '" + text + "' from seat " + seat);
-				QServer.sendSYSOLM(msg);
-			}
-		} else if(cmd.startsWith("kill") && !this.isPublicRoom()) {
-				// Kill account;
-				if(st.hasMoreTokens())
-					name=st.nextToken("\n");
-				if(name!= null) {
-					_log.debug("Killing '" + name + "' session ");
-					if(QServer.killSession(name)) {
-						error=name + "'s session terminated";
-					} else {
-						error="Session could not be terminated";
-					}
-				}
-		} else if(cmd.startsWith("me")) {
-			if(st.hasMoreTokens())
-				msg=st.nextToken("\n");
-			if(msg!= null) {
-				_log.debug("Executing '" + text + "' from seat " + seat);
-				processEvent(new ChatEvent(this,"","*" + _users[seat].getHandle() + " " + msg));
-			}
-		} else if(cmd.startsWith("8ba")) {
-			processEvent(new ChatEvent(this,"System", _sResponses[getRoll(20)-1]));
-		} else if(cmd.startsWith("roll")) {
-			//roll num size
-			int num=2, size=6;
-			if(st.hasMoreTokens()) {
-				String sNum="2",sSize="6";
-				sNum=st.nextToken();
-				if(st.hasMoreTokens())
-					sSize=st.nextToken();
-				try {
-					num=Integer.parseInt(sNum);
-					size=Integer.parseInt(sSize);
-				} catch (Exception e) {;}
-			}
-			if(num>8)
-				num=8;
-			else if(num<1)
-				num=2;
-			if(size>99)
-				size=99;
-			else if(size<2)
-				size=6;
-			StringBuffer sb=new StringBuffer();
-			sb.append(_users[seat].getHandle());
-			sb.append(" rolled ");
-			sb.append(num);
-			sb.append(" ");
-			sb.append(size);
-			sb.append("-sided di");
-			sb.append(num==1?"e:":"ce:");
-			for(int i=0;i<num;i++) {
-				sb.append(" ");
-				sb.append(getRoll(size));
-			}
-			processEvent(new ChatEvent(this,"System", sb.toString()));
-		} else {
-			alMsg.add("Error: " + text + " not understood");
-			sendSystemMessage(SYS_NAME,seat,alMsg);
-		}
-		if(error!=null) {
-			alMsg.add(error);
-			sendSystemMessage(SYS_NAME,seat,alMsg);
-		}
-	}
-
-	/**
-	 * @return
-	 */
-	private int getRoll(int size) {
-		return _die.nextInt(size)+1;
-	}
-
-	public synchronized void addEventListener(RoomEventListener listener) {
-		_listeners.add(listener);
-	}
-
-	public synchronized void removeEventListener(RoomEventListener listener) {
-		if(_listeners.contains(listener)) {
-			_listeners.remove(listener);
-		}
-	}
-
-	public synchronized void processJoinEvent(JoinEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			if(event.getType()==JoinEvent.EVENT_JOIN)
-				for(int i=0,size=_listeners.size();i<size;i++) {
-					((RoomEventListener)_listeners.get(i)).userJoined(event);
-				}
-			else
-				for(int i=0,size=_listeners.size();i<size;i++) {
-					((RoomEventListener)_listeners.get(i)).userLeft(event);
-				}
-		}
-	}
-
-	public synchronized void processQuestionStateEvent(QuestionStateEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			if(event.getType()==QuestionStateEvent.ACCEPTING_QUESTIONS)
-				for(int i=0,size=_listeners.size();i<size;i++) {
-					((RoomEventListener)_listeners.get(i)).acceptingQuestions(event);
-				}
-			else
-				for(int i=0,size=_listeners.size();i<size;i++) {
-					((RoomEventListener)_listeners.get(i)).rejectingQuestions(event);
-				}
-		}
-	}
-
-	public synchronized void processSystemMessageEvent(SystemMessageEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			for(int i=0,size=_listeners.size();i<size;i++) {
-				((RoomEventListener)_listeners.get(i)).systemSent(event);
-			}
-		}
-	}
-
-	public synchronized void processChatEvent(ChatEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			for(int i=0,size=_listeners.size();i<size;i++) {
-				((RoomEventListener)_listeners.get(i)).userSaid(event);
-			}
-		}
-	}
-
-	protected synchronized void processEvent(RoomEvent event) {
-		if(event instanceof JoinEvent) 
-			processJoinEvent((JoinEvent)event);
-		else if(event instanceof ChatEvent) 
-			processChatEvent((ChatEvent)event);
-		else if(event instanceof SystemMessageEvent) 
-			processSystemMessageEvent((SystemMessageEvent)event);
-	}
-
-
-	/**
-	 * @return
-	 */
-	public boolean isPublicRoom() {
-		return _bPublic;
-	}
-
-	/**
-	 * @return
-	 */
-	public boolean isLocked() {
-		return _bLocked;
-	}
-	
-	protected int getNumber(String string) {
-		int pos=-1;
-		try {
-			pos=Integer.parseInt(string);
-		} catch (NumberFormatException e) {
-			// bad cmd parm, ignore.
-		}
-		return pos;
-	}
-
-	/**
-	 * @param name
-	 * @param type
-	 * @param systemPickOrder
-	 * @return
-	 */
-	public GameDelegate createGame(int id, String name, String type, boolean systemPickOrder) {
-		GameDelegate game=new GameDelegate(this,id,name,type,systemPickOrder);
-		synchronized(_alGames) {
-			_alGames.add(game);
-		}
-		return game;
-	}
-	
-	public void removeUserFromGame(String handle) {
-		synchronized(_htUsers) {
-			SeatInfo user=getSeatInfo(handle);
-			if(user!=null) {
-				int seat=user.getSeat();
-				_userGame[seat]=null;
-				_users[seat].setGameStatus(false);
-			}
-		}
-		
-	}
-	
-	public GameDelegate getGame(int seat) {
-		return _userGame[seat];
-	}
-
-	/**
-	 * @param seat
-	 * @return
-	 */
-	public SeatInfo getSeatInfo(int seat) {
-		// synchronized on the array
-		return _users[seat];
-	}
-	
-	public SeatInfo getSeatInfo(String handle) {
-		// synchronized on the table
-		return (SeatInfo)_htUsers.get(handle.toLowerCase());
-	}
-
-	/**
-	 * @param delegate
-	 */
-	public void destroyGame(GameDelegate game) {
-		// need to reset all users
-		for(int i=0;i<ROOM_CAPACITY;i++) {
-			if(_userGame[i]!=null) {
-				_users[i].setGameStatus(false);
-				_userGame[i]=null;
-			}
-		}
-		synchronized(_alGames) {
-			_alGames.remove(game);
-		}
 	}
 
 	/**
@@ -447,52 +89,140 @@ class RoomDelegate {
 	}
 
 	/**
-	 * @param handle
 	 * @param delegate
-	 * @return
-	 * @throws UserNotInRoomException
-	 * @throws UserMismatchException
 	 */
-	public SeatInfo addUserToGame(String handle, GameDelegate game) throws UserNotInRoomException {
-		// we need to check seat and handle to make sure they match.
-		synchronized(_htUsers) {
-			SeatInfo info=getSeatInfo(handle);
-			if(info==null)
-				throw new UserNotInRoomException();
-			if(!info.isInGame()) {
-				info.setGameStatus(true);
-				_userGame[info.getSeat()]=game;
-				return info;
+	public void destroyGame(GameDelegate game) {
+		// need to reset all users in game
+		for(int i=0;i<ROOM_CAPACITY;i++) {
+			if(_userGame[i]==game) {
+				_users[i].setGameStatus(false);
+				_userGame[i]=null;
 			}
-			return null;
+		}
+		synchronized(_alGames) {
+			_alGames.remove(game);
 		}
 	}
-	
-	public String getInfo() {
-		return "";
+
+	public GameDelegate getGame(QSeat user) {
+		if(isInRoom(user))
+			return _userGame[user.getSeatID()];
+		return null;
+	}
+
+	public void removeUserFromGame(QHandle handle) {
+		synchronized(_htUsers) {
+			QSeat user=getSeatInfo(handle);
+			if(user!=null) {
+				int seat=user.getSeatID();
+				_userGame[seat]=null;
+				_users[seat].setGameStatus(false);
+			}
+		}
+		
 	}
 
 	/**
-	 * @param sys_name2
-	 * @param seat
-	 * @param alMsg
+	 * @param name
+	 * @param type
+	 * @param systemPickOrder
+	 * @return
 	 */
-	protected void sendSystemMessage(String name, int seat, List l) {
-		processEvent(new SystemMessageEvent(this,name,seat,(String[])l.toArray(new String[0])));
+	public GameDelegate createGame(int id, String name, String type, boolean systemPickOrder) {
+		GameDelegate game=new GameDelegate(this,id,name,type,systemPickOrder);
+		synchronized(_alGames) {
+			_alGames.add(game);
+		}
+		return game;
 	}
 
 	/**
 	 * @return
 	 */
-	public ObservedGame observeGame(String handle) {
-		SeatInfo info=getSeatInfo(handle);
+	public ObservedGame observeGame(QHandle handle) {
+		QSeat info=getSeatInfo(handle);
 		if(info!=null) {
-			GameDelegate game=_userGame[info.getSeat()];
+			GameDelegate game=_userGame[info.getSeatID()];
 			if(game!=null)
 				return new ObservedGame(game);
 		}
 		return null;
 	}
 
+	/**
+	 * @param handle
+	 */
+	public QSeat addUser(QHandle handle, ChatProfile security) {
+		synchronized(_htUsers) {
+			QSeat user=getSeatInfo(handle);
+			if(user==null) {
+				if(!isFull()) {
+					for(int i=0;i<ROOM_CAPACITY;i++){
+						if(_users[i]==null) {
+							user=new SeatInfo(handle,i,security);
+							takeSeat(user);
+							return user;
+						}
+					}
+				}
+				return null;
+			} else {
+				if(_log.isDebugEnabled())
+					_log.warn("'" + handle + "' is already in room: " + getName());
+				return user;
+			}
+		}
+	}
+
+	public void removeUser(QSeat user) {
+		synchronized(_htUsers) {
+			// was this seat filled?
+			if(isInRoom(user)) {
+				// are they in a game?
+				if(_userGame[user.getSeatID()]!= null) {
+					_userGame[user.getSeatID()].leave(user);
+				}
+				super.removeUser(user);
+			}
+		}
+	}
+
+	/**
+	 * @param user
+	 */
+	protected void takeSeat(QSeat user) {
+		_users[user.getSeatID()]=(SeatInfo)user;
+		super.takeSeat(user);
+	}
+
+	/**
+	 * @param user
+	 */
+	protected void leaveSeat(QSeat user) {
+		_users[user.getSeatID()]=null;
+		super.leaveSeat(user);
+	}
+
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.AbstractRoomDelegate#send(org.jbrain.qlink.chat.RoomEvent)
+	 */
+	protected void send(RoomEvent event) {
+		// no outside integration, so loop.
+		processEvent(event);
+	}
+
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.QRoom#getExtSeatInfoList()
+	 */
+	public QSeat[] getExtSeatInfoList(QSeat user) {
+		return getSeatInfoList(user);
+	}
+
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.QRoom#isManagedRoom()
+	 */
+	public boolean isManagedRoom() {
+		return true;
+	}
 
 }

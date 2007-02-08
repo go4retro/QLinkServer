@@ -78,4 +78,52 @@ public class DBUtils {
 			}
 	}
 
+	public static int getNextID(int start, int type, int max) {
+        Connection conn=null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        String sql; 
+        
+        try {
+        	conn=DBUtils.getConnection();
+            stmt = conn.createStatement();
+            _log.debug("Attemping to find next available message base ID after "+ start);
+        	int orig_id=start;
+        	do {
+        		start++;
+        		if(start>max)
+        			start=0;
+        		sql="SELECT reference_id from entry_types where reference_id=" + start;
+        		_log.debug(sql);
+        		rs=stmt.executeQuery(sql);
+        	} while(rs.next() && start!=orig_id);
+    		try { rs.close(); 
+    		} catch (Exception e) {}
+        	if(start==orig_id) {
+        		// error
+        		_log.error("Cannot find ID <=" + max);
+        		return -1;
+        	} else {
+        		_log.debug("Creating new entry_types record");
+    			sql="insert into entry_types (reference_id,entry_type,create_date,last_update) VALUES (" + start + "," + type + ",now(),now())";
+				_log.debug(sql);
+    			stmt.execute(sql);
+    			if(stmt.getUpdateCount()==0) {
+    				_log.error("Could not insert record into entry_types");
+    				return -1;
+    			}
+        	}
+    		return start;
+        } catch (SQLException e) {
+        	_log.error("SQL Exception",e);
+        	return -1;
+        } finally {
+        	close(rs);
+        	close(stmt);
+        	close(conn);
+        }
+	}
+	
+
+	
 }

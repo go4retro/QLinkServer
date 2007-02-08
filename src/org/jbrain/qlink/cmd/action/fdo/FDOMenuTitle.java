@@ -18,34 +18,15 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Jul 29, 2005
+	Created on Oct 11, 2005
 	
  */
-package org.jbrain.qlink.cmd.action;
+package org.jbrain.qlink.cmd.action.fdo;
 
 
-public class TextRequest extends AbstractDialogAction {
-
-	/**
-	 * @param mnemonic
-	 * @param name
-	 * @param text
-	 */
-	public TextRequest(String name, String text) {
-		super("ZQ",name,text);
-	}
-	public byte[] getBytes() {
-		byte[] b1=getBytes(_sName);
-		byte[] b2=getBytes("ello");
-		byte[] b3=getBytes(_sText);
-		byte[] data=new byte[10+2+4 + b1.length + b3.length];
-		System.arraycopy(b1,0,data,10,b1.length);
-		data[10+ b1.length]=(byte)0x90;
-		System.arraycopy(b2,0,data,11+b1.length,4);
-		data[11+ 4 + b1.length]=(byte)0x90;
-		System.arraycopy(b3,0,data,12+b1.length+4,b3.length);
-		finalizeCmd(data);
-		return data;
-	}	
+public class FDOMenuTitle extends AbstractFDOText {
 	
+	public FDOMenuTitle(String title) {
+		super(FDOCommand.CMD_MENU_ITEM,title);
+	}
 }

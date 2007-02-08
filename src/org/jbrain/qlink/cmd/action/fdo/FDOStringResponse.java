@@ -18,30 +18,40 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Jul 22, 2005
+	Created on Oct 14, 2005
 	
  */
-package org.jbrain.qlink.cmd.action;
-
-import org.jbrain.qlink.cmd.CRCException;
+package org.jbrain.qlink.cmd.action.fdo;
 
 
-public class LoginDialogAllocated extends AbstractAction {
-
-	public static final String MNEMONIC = "ZO";
-	private String _sName;
-
-	public LoginDialogAllocated(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
-		_sName=getString(data,start+10,10);
-		
-	}
+public class FDOStringResponse extends AbstractFDOResponse {
 	
-	public LoginDialogAllocated() {
-		super(MNEMONIC);
+	private String _sText;
+
+	public FDOStringResponse(String cmd, String text) {
+		super(cmd,0x02);
+		_sText=text;
+		if(_sText==null) 
+			throw new NullPointerException("Text is null");
 	}
-	
-	public String getDialogName() {
-		return _sName;
+
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.cmd.action.fdo.FDOCommand#getBytes()
+	 */
+	public byte[] getBytes() {
+		byte[] data = new byte[size()];
+		byte[] b=this.getBytes(_sText);
+		System.arraycopy(b,0,data,4,b.length);
+		data[size()-1]=0;
+		finalizeResponse(data);
+		return data;
 	}
+
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.cmd.action.fdo.FDOCommand#size()
+	 */
+	public int size() {
+		return 5+_sText.length();
+	}
+
 }

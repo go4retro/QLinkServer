@@ -33,6 +33,7 @@ import org.apache.log4j.Logger;
 import org.jbrain.qlink.*;
 import org.jbrain.qlink.chat.*;
 import org.jbrain.qlink.cmd.action.*;
+import org.jbrain.qlink.user.QHandle;
 
 public class PlayGame extends AbstractPhaseState {
 	private static Logger _log=Logger.getLogger(PlayGame.class);
@@ -89,36 +90,31 @@ public class PlayGame extends AbstractPhaseState {
 			SeatInfo info;
 			SeatInfo[] seats;
 			
-			try {
-				if(!_game.canContinue()) {
-					// too much time has elapsed...
-					_log.debug("Timeout occurred");
-					List l=_game.getAbstainList();
-					// did some folks not respond?
-					if(l.size()>0) {
-						// we have players not yet hooked to the game.
-						seats=_game.getPlayers();
-						for(int i=0,size=seats.length;i<size;i++) {
-							// send error to all players.
-							_server.sendToUser(seats[i].getHandle(),new GameCannotBeInitiated());
-						}
-						for(int i=0,size=l.size();i<size;i++) {
-							// send list of un acked players.
-							info=(SeatInfo)l.get(i);
-							if(_log.isDebugEnabled()) 
-								_log.debug(info.getHandle() + " did not respond to invitation." );
-							_server.send(new PlayerNoResponse(info.getSeat()));
-						}
-						// this will restore our state, in the handler.
-						_game.terminate();
-					} else {
-						_log.warn("For reason, we have no abstains, but timer is still running and we cannot continue");
-						_game.terminate();
+			if(!_game.canContinue()) {
+				// too much time has elapsed...
+				_log.debug("Timeout occurred");
+				List l=_game.getAbstainList();
+				// did some folks not respond?
+				if(l.size()>0) {
+					// we have players not yet hooked to the game.
+					seats=_game.getPlayers();
+					for(int i=0,size=seats.length;i<size;i++) {
+						// send error to all players.
+						_session.getServer().sendToUser(seats[i].getHandle(),new GameCannotBeInitiated());
 					}
+					for(int i=0,size=l.size();i<size;i++) {
+						// send list of un acked players.
+						info=(SeatInfo)l.get(i);
+						if(_log.isDebugEnabled()) 
+							_log.debug(info.getHandle() + " did not respond to invitation." );
+						_session.send(new PlayerNoResponse(info.getSeatID()));
+					}
+					// this will restore our state, in the handler.
+					_game.terminate();
+				} else {
+					_log.warn("For reason, we have no abstains, but timer is still running and we cannot continue");
+					_game.terminate();
 				}
-			} catch (IOException e) {
-				_log.error("Link error",e);
-				_server.terminate();
 			}
 		}
 	};
@@ -131,29 +127,29 @@ public class PlayGame extends AbstractPhaseState {
 	private GameEventListener _listener = new GameEventListener() {
 
 		public void gameSent(GameCommEvent event) {
-			if (!event.getHandle().equals(_server.getHandle())) {
+			if (!_session.getHandle().equals(event.getName())) {
 				if (_log.isDebugEnabled())
 					_log.debug("Seat: "
-						+ event.getSeat()
+						+ event.getSeatID()
 						+ " sent game data: '"
 						+ event.getText()
 						+ "'");
-				send(new GameSend(event.getSeat(), event.getText()));
+				_session.send(new GameSend(event.getSeatID(), event.getText()));
 			}
 		}
 
 		public void eventOccurred(GameEvent event) {
 			switch (event.getType()) {
 				case GameEvent.LEAVE_GAME :
-					if (!event.getHandle().equals(_server.getHandle())) {
-						_log.debug(event.getHandle() + " left game");
+					if (!_session.getHandle().equals(event.getName())) {
+						_log.debug(event.getName() + " left game");
 						// if we are playing the game, and someone leaves, let the other user know.
-						send(new PlayerLeftGame(event.getHandle()));
+						_session.send(new PlayerLeftGame(event.getName()));
 					}
 					break;
 				case GameEvent.ACCEPT_INVITE :
 					if (!_bInvited) {
-						_log.debug(event.getHandle() + " accepted game invite");
+						_log.debug(event.getName() + " accepted game invite");
 						if (_game.canContinue()) {
 							if (_timerTask != null) {
 								_timerTask.cancel();
@@ -166,8 +162,8 @@ public class PlayGame extends AbstractPhaseState {
 					break;
 				case GameEvent.DECLINE_INVITE :
 					if (!_bInvited) {
-						_log.debug(event.getHandle() + " declined game invite");
-						send(new PlayerDeclinedInvite(event.getSeat()));
+						_log.debug(event.getName() + " declined game invite");
+						_session.send(new PlayerDeclinedInvite(event.getSeatID()));
 						if (_game.getAbstainList().size() == 0) {
 							//everyone either accepted or declined.  delete game and send errors out.
 							if (_timerTask != null) {
@@ -180,13 +176,13 @@ public class PlayGame extends AbstractPhaseState {
 					break;
 				case GameEvent.REQUEST_LOAD :
 					_log.debug("Sending game load command");
-					send(new LoadGame());
+				_session.send(new LoadGame());
 					setPhase(PHASE_LOADING);
 					break;
 				case GameEvent.READY_TO_START :
 					setPhase(PHASE_READY_TO_START);
 					if (!_bInvited) {
-						_log.debug(event.getHandle()
+						_log.debug(event.getName()
 							+ " loaded the game and requests the start");
 						if (_game.canContinue()) {
 							_game.start();
@@ -195,23 +191,23 @@ public class PlayGame extends AbstractPhaseState {
 					break;
 				case GameEvent.REQUEST_RESTART :
 					if (!_bRequestRestart) {
-						_log.debug(event.getHandle()
+						_log.debug(event.getName()
 							+ " requests a game restart");
-						send(new RequestGameRestart());
+						_session.send(new RequestGameRestart());
 						setPhase(PHASE_REQUEST_RESTART);
 					}
 					break;
 				case GameEvent.ACCEPT_RESTART :
-					_log.debug(event.getHandle() + " accepts a game restart");
+					_log.debug(event.getName() + " accepts a game restart");
 					if (_bRequestRestart && _game.canContinue()) {
-						send(new RestartGame());
+						_session.send(new RestartGame());
 						_log.debug("Restarting requestor");
 					}
 					break;
 				case GameEvent.DECLINE_RESTART :
-					_log.debug(event.getHandle() + " declined a game restart");
+					_log.debug(event.getName() + " declined a game restart");
 					if (_bRequestRestart) {
-						send(new DeclineRestart());
+						_session.send(new DeclineRestart());
 					}
 					break;
 			}
@@ -220,7 +216,7 @@ public class PlayGame extends AbstractPhaseState {
 		public void gameStarted(StartGameEvent event) {
 			_log.debug("Game is (re)starting");
 			setPhase(PHASE_PLAYING);
-			send(new StartGame("GAME", event.getPlayOrder()));
+			_session.send(new StartGame("GAME", event.getPlayOrder()));
 		}
 
 		public void gameTerminated(GameTerminationEvent event) {
@@ -229,20 +225,10 @@ public class PlayGame extends AbstractPhaseState {
 			restoreState();
 		}
 
-		private void send(Action a) {
-			try {
-				_server.send(a);
-			} catch (IOException e) {
-				// leave game, and shut down.
-				_log.error("Link error", e);
-				_server.terminate();
-			}
-		}
-
 	};
 
-	public PlayGame(QServer server, Game game) {
-		super(server, PHASE_ACCEPT_INVITE);
+	public PlayGame(QSession session, Game game) {
+		super(session, PHASE_ACCEPT_INVITE);
 		_game=game;
 		_bInvited=true;
 	}
@@ -255,12 +241,12 @@ public class PlayGame extends AbstractPhaseState {
 			_game.removeListener(_listener);
 			_game.leave();
 		}
-		_server.setState(_intState);
-		_server.enableOLMs(true);
+		_session.setState(_intState);
+		_session.enableOLMs(true);
 	}
 
-	public PlayGame(QServer server, Room room, int id, String name, String type, boolean bSystemPickOrder) {
-		super(server, PHASE_INVITE);
+	public PlayGame(QSession session, Room room, int id, String name, String type, boolean bSystemPickOrder) {
+		super(session, PHASE_INVITE);
 		_bSystemPickOrder=bSystemPickOrder;
 		_sType=type;
 		_sName=name;
@@ -270,14 +256,14 @@ public class PlayGame extends AbstractPhaseState {
 }
 	
 	public void activate() throws IOException {
-		_server.enableOLMs(false);
+		_session.enableOLMs(false);
 		if(!_bInvited) {
 			_log.debug("User request to play a game");
 			_game=_room.createGame(_iGameID,_sName,_sType,_bSystemPickOrder);
 			if(_game!=null) {
 				_log.debug("Game service successfully created");
 				// we'll add listener later
-				_intState=_server.getState();
+				_intState=_session.getState();
 				super.activate();
 			} else {
 				_log.debug("Game service creation failed");
@@ -286,13 +272,13 @@ public class PlayGame extends AbstractPhaseState {
 			_log.debug("User invited to play a game");
 			if(_game!=null) {
 				_game.addListener(_listener);
-				_intState=_server.getState();
+				_intState=_session.getState();
 				super.activate();
 				// we are already in ACCEPT_INVITE state;
 				_game.acceptInvite();
 			} else {
 				_log.debug("Game no longer active.  Must have timed out during invite");
-				_server.send(new GameError("Game invitation cancelled due to timeout"));
+				_session.send(new GameError("Game invitation cancelled due to timeout"));
 				
 			}
 		}
@@ -308,7 +294,7 @@ public class PlayGame extends AbstractPhaseState {
 			if(a instanceof GameNextPlayer) {
 				handle=((GamePlayer)a).getHandle();
 				if(_log.isDebugEnabled())
-					_log.debug(_server.getHandle() + " invites " + handle + " to play " +_sName);
+					_log.debug(_session.getHandle() + " invites " + handle + " to play " +_sName);
 				
 				_alInvitees.add(a);
 				rc=true;
@@ -316,7 +302,7 @@ public class PlayGame extends AbstractPhaseState {
 				rc=true;
 				handle=((GamePlayer)a).getHandle();
 				if(_log.isDebugEnabled())
-					_log.debug(_server.getHandle() + " invites " + handle + " to play " +_sName);
+					_log.debug(_session.getHandle() + " invites " + handle + " to play " +_sName);
 				_alInvitees.add(a);
 				invitePlayers();
 			}
@@ -365,7 +351,7 @@ public class PlayGame extends AbstractPhaseState {
 	 * 
 	 */
 	private void invitePlayers() throws IOException {
-		String handle;
+		QHandle handle;
 		SeatInfo[] players;
 		byte[] seats;
 		GamePlayer invitee;
@@ -375,19 +361,19 @@ public class PlayGame extends AbstractPhaseState {
 		for(int i=0;i<_alInvitees.size();i++) {
 			// add player
 			invitee=(GamePlayer)_alInvitees.get(i);
-			handle=invitee.getHandle();
+			handle=new QHandle(invitee.getHandle());
 			try {
 				if(!_game.addPlayer(handle)) {
 					// they are already in a pending game
 					_log.debug(handle + "is already in a game, shutting down game.");
-					_server.send(new PlayerInGameError(invitee.getSeat()));
+					_session.send(new PlayerInGameError(invitee.getSeat()));
 					_game.terminate();
 					break;
 				}
 			} catch (UserNotInRoomException e) {
 				// player has left before we could invite him/her
 				_log.debug(handle + "is not in room, shutting down game.");
-				_server.send(new PlayerNotInRoomError(handle));
+				_session.send(new PlayerNotInRoomError(handle.toString()));
 				_game.terminate();
 				break;
 			}
@@ -399,16 +385,16 @@ public class PlayGame extends AbstractPhaseState {
 			_game.addListener(_listener);
 			players=_game.getPlayers();
 			// get my seat number.
-			int seat=_room.getSeatInfo(_server.getHandle()).getSeat();
+			int seat=_room.getSeatInfo(_session.getHandle()).getSeatID();
 			seats=_game.getPlayOrder();
 			// move to next step of game.
 			for(int i=0;i<players.length;i++) {
 				// we have to send directly to users, no game listeners yet.
-				if(!players[i].getHandle().equalsIgnoreCase(_server.getHandle())) {
-					_server.sendToUser(players[i].getHandle(),new InviteToGame(_bSystemPickOrder, seat, _iGameID, _sName, seats));
+				if(!players[i].getHandle().equals(_session.getHandle())) {
+					_session.getServer().sendToUser(players[i].getHandle(),new InviteToGame(_bSystemPickOrder, seat, _iGameID, _sName, seats));
 				}
 			}
-			_server.send(new PrepGame(seats));
+			_session.send(new PrepGame(seats));
 			_log.debug("Setting timeout for responses");
 			// need to set a timer...
 			_timerTask=new InviteTimeoutTask(); 
@@ -426,7 +412,7 @@ public class PlayGame extends AbstractPhaseState {
 	public void terminate() {
 		// go ahead and leave and remove the listener
 		restoreState();
-		_server.enableOLMs(false);
+		_session.enableOLMs(false);
 		if(_timerTask!=null)
 			_timerTask.run();
 		if(!_bInvited && _game.isActive()) {

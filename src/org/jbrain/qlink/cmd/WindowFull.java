@@ -24,7 +24,7 @@
 package org.jbrain.qlink.cmd;
 
 
-public class WindowFull extends AbstractCommand {
+public class WindowFull extends AbstractCheckedCommand {
 
 	public static final byte CMD_WINDOWFULL=0x21;
 

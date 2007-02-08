@@ -30,6 +30,7 @@ import java.util.Random;
 import java.util.Vector;
 
 import org.apache.log4j.Logger;
+import org.jbrain.qlink.user.QHandle;
 
 public class GameDelegate {
 	private static Logger _log=Logger.getLogger(GameDelegate.class);
@@ -111,8 +112,8 @@ public class GameDelegate {
 	 * @throws UserMismatchException
 	 * @throws UserNotInRoomException
 	 */
-	public boolean addPlayer(String handle) throws UserNotInRoomException {
-		SeatInfo info;
+	public boolean addPlayer(QHandle handle) throws UserNotInRoomException {
+		QSeat info;
 		synchronized(_room) {
 			info=_room.addUserToGame(handle,this);
 			if(info==null) {
@@ -151,7 +152,7 @@ public class GameDelegate {
 		if(_seats==null) {
 			_seats=new byte[l.size()];
 			for(int i=0;i<_seats.length;i++) {
-				_seats[i] = (byte)((SeatInfo)l.get(i)).getSeat();
+				_seats[i] = (byte)((SeatInfo)l.get(i)).getSeatID();
 			}
 		} 
 		return _seats;
@@ -167,97 +168,22 @@ public class GameDelegate {
 	/**
 	 * 
 	 */
-	public void acceptInvite(int seat) {
-		SeatInfo info=_room.getSeatInfo(seat);
-		addAccept(info);
-		processEvent(new GameEvent(this,GameEvent.ACCEPT_INVITE, seat, info.getHandle()));
-	}
-
-	/**
-	 * @param info
-	 */
-	private void addAccept(SeatInfo info) {
-		synchronized(_alDeclineList) {
-			_alAcceptList.add(info);
-			_alAbstainList.remove(info);
+	public void acceptInvite(QSeat seat) {
+		if(isInGame(seat)) {
+			addAccept(seat);
+			processEvent(new GameEvent(this,GameEvent.ACCEPT_INVITE, seat.getSeatID(),seat.getHandle().toString()));
 		}
 	}
 
-	public void declineInvite(int seat) {
-		SeatInfo info=_room.getSeatInfo(seat);
-		addDecline(info);
-		processEvent(new GameEvent(this,GameEvent.DECLINE_INVITE, seat, info.getHandle()));
-	}
-
-	/**
-	 * @param info
-	 */
-	private void addDecline(SeatInfo info) {
-		synchronized(_alDeclineList) {
-			_alDeclineList.add(info);
-			_alAbstainList.remove(info);
+	public void declineInvite(QSeat seat) {
+		if(isInGame(seat)) {
+			addDecline(seat);
+			processEvent(new GameEvent(this,GameEvent.DECLINE_INVITE, seat.getSeatID(),seat.getHandle().toString()));
 		}
 	}
 
-	/**
-	 * @param _listener
-	 */
-	public void addListener(GameEventListener listener) {
-		synchronized(_listeners) {
-			_listeners.add(listener);
-		}
-	}
-
-	protected void processEvent(RoomEvent event) {
-		synchronized(_listeners) {
-			if(event instanceof GameCommEvent) 
-				processGameCommEvent((GameCommEvent)event);
-			else if(event instanceof GameEvent) 
-				processGameEvent((GameEvent)event);
-			else if(event instanceof GameTerminationEvent) 
-				processGameTerminationEvent((GameTerminationEvent)event);
-			else if(event instanceof StartGameEvent) 
-				processStartGameEvent((StartGameEvent)event);
-		}
-	}
-	
 	public boolean canContinue() {
 		return _alAcceptList.size()==_alPlayers.size();
-	}
-
-	/**
-	 * @param event
-	 */
-	protected void processGameCommEvent(GameCommEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			for(int i=0,size=_listeners.size();i<size;i++) {
-				((GameEventListener)_listeners.get(i)).gameSent(event);
-			}
-		}
-	}
-
-	protected void processStartGameEvent(StartGameEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			for(int i=0,size=_listeners.size();i<size;i++) {
-				((GameEventListener)_listeners.get(i)).gameStarted(event);
-			}
-		}
-	}
-
-	protected void processGameEvent(GameEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			for(int i=0,size=_listeners.size();i<size;i++) {
-				((GameEventListener)_listeners.get(i)).eventOccurred(event);
-			}
-		}
-	}
-
-	protected void processGameTerminationEvent(GameTerminationEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			for(int i=0,size=_listeners.size();i<size;i++) {
-				((GameEventListener)_listeners.get(i)).gameTerminated(event);
-			}
-		}
 	}
 
 	/**
@@ -304,6 +230,15 @@ public class GameDelegate {
 	}
 
 	/**
+	 * @param _listener
+	 */
+	public void addListener(GameEventListener listener) {
+		synchronized(_listeners) {
+			_listeners.add(listener);
+		}
+	}
+
+	/**
 	 * @param listener
 	 */
 	public void removeListener(GameEventListener listener) {
@@ -317,36 +252,41 @@ public class GameDelegate {
 	 * @param seat
 	 * @param text
 	 */
-	public void send(int seat, String text) {
-		GameCommEvent event=new GameCommEvent(this,seat,_room.getSeatInfo(seat).getHandle(),text);
-		record(event);
-		processEvent(event);
+	public void send(QSeat seat, String text) {
+		if(isInGame(seat)) {
+			GameCommEvent event=new GameCommEvent(this,seat.getSeatID(),seat.getHandle().toString(),text);
+			record(event);
+			processEvent(event);
+		}
 	}
 
 	/**
 	 * @param seat
 	 */
-	public void requestLoad(int seat) {
-		SeatInfo info=_room.getSeatInfo(seat);
-		clearVotes();
-		processEvent(new GameEvent(this,GameEvent.REQUEST_LOAD, seat, info.getHandle()));
+	public void requestLoad(QSeat seat) {
+		if(isInGame(seat)) {
+			clearVotes();
+			processEvent(new GameEvent(this,GameEvent.REQUEST_LOAD, seat.getSeatID(),seat.getHandle().toString()));
+		}
 	}
 
-	public void readyToStart(int seat) {
-		SeatInfo info=_room.getSeatInfo(seat);
-		addAccept(info);
-		processEvent(new GameEvent(this,GameEvent.READY_TO_START, seat, info.getHandle()));
+	public void readyToStart(QSeat seat) {
+		if(isInGame(seat)) {
+			addAccept(seat);
+			processEvent(new GameEvent(this,GameEvent.READY_TO_START, seat.getSeatID(),seat.getHandle().toString()));
+		}
 	}
 
 	/**
 	 * 
 	 */
-	public void requestRestart(int seat) {
-		SeatInfo info= _room.getSeatInfo(seat);
-		clearVotes();
-		// we alreayd want to restart...
-		addAccept(info);
-		processEvent(new GameEvent(this,GameEvent.REQUEST_RESTART, seat,info.getHandle()));
+	public void requestRestart(QSeat seat) {
+		if(isInGame(seat)) {
+			clearVotes();
+			// we alreayd want to restart...
+			addAccept(seat);
+			processEvent(new GameEvent(this,GameEvent.REQUEST_RESTART, seat.getSeatID(),seat.getHandle().toString()));
+		}
 	}
 
 	/**
@@ -364,10 +304,11 @@ public class GameDelegate {
 	/**
 	 * @param seat
 	 */
-	public void acceptRestart(int seat) {
-		SeatInfo info= _room.getSeatInfo(seat);
-		addAccept(info);
-		processEvent(new GameEvent(this,GameEvent.ACCEPT_RESTART, seat, info.getHandle()));
+	public void acceptRestart(QSeat seat) {
+		if(isInGame(seat)) {
+			addAccept(seat);
+			processEvent(new GameEvent(this,GameEvent.ACCEPT_RESTART, seat.getSeatID(),seat.getHandle().toString()));
+		}
 	}
 
 	/**
@@ -381,61 +322,44 @@ public class GameDelegate {
 	 * @param handle
 	 * 
 	 */
-	public void leave(int seat) {
-		SeatInfo info= _room.getSeatInfo(seat);
-		if(info!=null) {
-			_log.debug("Removing '" + info.getHandle() + "' from game: " + _sName);
-			removePlayer(info);
-			processEvent(new GameEvent(this,GameEvent.LEAVE_GAME, info.getSeat(), info.getHandle()));
+	public void leave(QSeat seat) {
+		if(isInGame(seat)) {
+			_log.debug("Removing '" + seat.getHandle() + "' from game: " + _sName);
+			removePlayer(seat);
+			processEvent(new GameEvent(this,GameEvent.LEAVE_GAME, seat.getSeatID(),seat.getHandle().toString()));
 			synchronized(_alDeclineList) {
 				// is everyone gone?
 				if(_alPlayers.size()==0)
 					terminate();
 			}
+		} else if(seat!=null){
+			_log.warn("Player '" + seat.getHandle() + "' not in game: " + _sName);
 		} else {
-			_log.warn("Player '" + info.getHandle() + "' not in game: " + _sName);
+			_log.warn("Null player tried to leave game");
+			
 		}
 	}
 
 	/**
 	 * @param seat
 	 */
-	private void removePlayer(SeatInfo info) {
-		_room.removeUserFromGame(info.getHandle());
-		synchronized(_alDeclineList) {
-			_alPlayers.remove(info);
-			_alAbstainList.remove(info);
-			_alDeclineList.remove(info);
-			_alAcceptList.remove(info);
+	public void restart(QSeat seat) {
+		if(isInGame(seat)) {
+			// we need to re-order the players to have this person first.
+			// for now, let's just shift everyone up by 1
+			int i=_seats.length-1;
+			while(i>0 && _seats[i]!=seat.getSeatID()) {
+				i--;
+			}
+			while(i>0) {
+				_seats[i] = _seats[i-1];
+				i--;
+			}
+			_seats[0]=(byte)seat.getSeatID();
+			StartGameEvent event=new StartGameEvent(this,seat,getPlayOrder());
+			record(event);
+			processEvent(event);
 		}
-	}
-
-	/**
-	 * @param seat
-	 */
-	public void restart(int seat) {
-		SeatInfo info= _room.getSeatInfo(seat);
-		// we need to re-order the players to have this person first.
-		// for now, let's just shift everyone up by 1
-		int i=_seats.length-1;
-		while(i>0 && _seats[i]!=seat) {
-			i--;
-		}
-		while(i>0) {
-			_seats[i] = _seats[i-1];
-			i--;
-		}
-		_seats[0]=(byte)seat;
-		StartGameEvent event=new StartGameEvent(this,seat,info.getHandle(),getPlayOrder());
-		record(event);
-		processEvent(event);
-	}
-
-	/**
-	 * @param object
-	 */
-	private void record(RoomEvent event) {
-		_vGameLog.add(event);
 	}
 
 	/**
@@ -448,24 +372,122 @@ public class GameDelegate {
 	/**
 	 * 
 	 */
-	public void start(int seat) {
-		SeatInfo info= _room.getSeatInfo(seat);
-		StartGameEvent event=new StartGameEvent(this,seat,info.getHandle(),getPlayOrder());
-		record(event);
-		processEvent(event);
+	public void start(QSeat seat) {
+		if(isInGame(seat)) {
+			StartGameEvent event=new StartGameEvent(this,seat,getPlayOrder());
+			record(event);
+			processEvent(event);
+		}
 	}
 
 	/**
 	 * @param seat
 	 */
-	public void declineRestart(int seat) {
-		SeatInfo info=_room.getSeatInfo(seat);
-		addDecline(info);
-		processEvent(new GameEvent(this,GameEvent.DECLINE_RESTART, seat, info.getHandle()));
+	public void declineRestart(QSeat seat) {
+		if(isInGame(seat)) {
+			addDecline(seat);
+			processEvent(new GameEvent(this,GameEvent.DECLINE_RESTART, seat.getSeatID(),seat.getHandle().toString()));
+		}
 		
 	}
-	
+
 	public List getGameLog() {
 		return Collections.unmodifiableList(_vGameLog);
+	}
+
+	/**
+	 * @param event
+	 */
+	protected void processGameCommEvent(GameCommEvent event) {
+		if(event != null && _listeners.size() > 0) {
+			for(int i=0,size=_listeners.size();i<size;i++) {
+				((GameEventListener)_listeners.get(i)).gameSent(event);
+			}
+		}
+	}
+
+	protected void processStartGameEvent(StartGameEvent event) {
+		if(event != null && _listeners.size() > 0) {
+			for(int i=0,size=_listeners.size();i<size;i++) {
+				((GameEventListener)_listeners.get(i)).gameStarted(event);
+			}
+		}
+	}
+
+	protected void processGameEvent(GameEvent event) {
+		if(event != null && _listeners.size() > 0) {
+			for(int i=0,size=_listeners.size();i<size;i++) {
+				((GameEventListener)_listeners.get(i)).eventOccurred(event);
+			}
+		}
+	}
+
+	protected void processGameTerminationEvent(GameTerminationEvent event) {
+		if(event != null && _listeners.size() > 0) {
+			for(int i=0,size=_listeners.size();i<size;i++) {
+				((GameEventListener)_listeners.get(i)).gameTerminated(event);
+			}
+		}
+	}
+
+	protected void processEvent(RoomEvent event) {
+		synchronized(_listeners) {
+			if(event instanceof GameCommEvent) 
+				processGameCommEvent((GameCommEvent)event);
+			else if(event instanceof GameEvent) 
+				processGameEvent((GameEvent)event);
+			else if(event instanceof GameTerminationEvent) 
+				processGameTerminationEvent((GameTerminationEvent)event);
+			else if(event instanceof StartGameEvent) 
+				processStartGameEvent((StartGameEvent)event);
+		}
+	}
+	
+	/**
+	 * @param seat
+	 * @return
+	 */
+	private boolean isInGame(QSeat seat) {
+		return _alPlayers.contains(seat);
+	}
+
+	/**
+	 * @param seat
+	 */
+	private void removePlayer(QSeat seat) {
+		_room.removeUserFromGame(seat.getHandle());
+		synchronized(_alDeclineList) {
+			_alPlayers.remove(seat);
+			_alAbstainList.remove(seat);
+			_alDeclineList.remove(seat);
+			_alAcceptList.remove(seat);
+		}
+	}
+
+	/**
+	 * @param seat
+	 */
+	private void addAccept(QSeat seat) {
+		synchronized(_alDeclineList) {
+			_alAcceptList.add(seat);
+			_alAbstainList.remove(seat);
+		}
+	}
+
+	/**
+	 * @param seat
+	 */
+	private void addDecline(QSeat seat) {
+		synchronized(_alDeclineList) {
+			_alDeclineList.add(seat);
+			_alAbstainList.remove(seat);
+		}
+	}
+
+	/**
+	 * @param object
+	 */
+	private void record(RoomEvent event) {
+		_vGameLog.add(event);
 	}
 }

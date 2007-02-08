@@ -49,8 +49,8 @@ public class ActionFactory {
 		if(action.equals(SelectMenuItem.MNEMONIC)) {
 			return new SelectMenuItem(b,start,len);
 		}
-		if(action.equals(MR.MNEMONIC)) {
-			return new MR(b,start,len);
+		if(action.equals(EnterChat.MNEMONIC)) {
+			return new EnterChat(b,start,len);
 		}
 		if(action.equals(ChatSay.MNEMONIC)) {
 			return new ChatSay(b,start,len);
@@ -67,8 +67,8 @@ public class ActionFactory {
 		if(action.equals(ClearScreen.MNEMONIC)) {
 			return new ClearScreen(b,start,len);
 		}
-		if(action.equals(LoginDialogAllocated.MNEMONIC)) {
-			return new LoginDialogAllocated(b,start,len);
+		if(action.equals(DialogAllocated.MNEMONIC)) {
+			return new DialogAllocated(b,start,len);
 		}
 		if(action.equals(ZA.MNEMONIC)) {
 			return new ZA(b,start,len);
@@ -271,6 +271,25 @@ public class ActionFactory {
 		if(action.equals(CancelReservation.MNEMONIC)) {
 			return new CancelReservation(b,start,len);
 		}
+		if(action.equals(DialogYes.MNEMONIC)) {
+			return new DialogYes(b,start,len);
+		}
+		if(action.equals(DialogNo.MNEMONIC)) {
+			return new DialogNo(b,start,len);
+		}
+		if(action.equals(DialogCancel.MNEMONIC)) {
+			return new DialogCancel(b,start,len);
+		}
+		if(action.equals(DeleteAccountInSlotAck.MNEMONIC)) {
+			return new DeleteAccountInSlotAck(b,start,len);
+		}
+		if(action.equals(EnterSuperChat.MNEMONIC)) {
+			return new EnterSuperChat(b,start,len);
+		}
+		if(action.equals(ExtIdentifyUser.MNEMONIC)) {
+			return new ExtIdentifyUser(b,start,len);
+		}
+		
 		return new UnknownAction(b,start,len);
 	}
 }

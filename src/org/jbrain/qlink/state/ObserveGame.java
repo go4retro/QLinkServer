@@ -30,13 +30,14 @@ import org.apache.log4j.Logger;
 import org.jbrain.qlink.*;
 import org.jbrain.qlink.chat.*;
 import org.jbrain.qlink.cmd.action.*;
+import org.jbrain.qlink.user.QHandle;
 
 public class ObserveGame extends AbstractState {
 	private static Logger _log=Logger.getLogger(ObserveGame.class);
 	private QState _intState;
 	private Room _room;
 	private ObservedGame _game;
-	private String _sHandle;
+	private QHandle _handle;
 	private int _iSeat;
 	
 	class QueuedGameListener implements ObservedGameEventListener {
@@ -87,7 +88,7 @@ public class ObserveGame extends AbstractState {
 			Action a;
 			if(v.size()!=0 && !_bSuspended) {
 				a=(Action)v.remove(0);
-				send(a);
+				_session.send(a);
 				if(a instanceof NoMoreMoves) {
 					_bCaughtUp=true;
 				} else {
@@ -99,17 +100,17 @@ public class ObserveGame extends AbstractState {
 		public void gameSent(GameCommEvent event) {
 			if (_log.isDebugEnabled())
 				_log.debug("Seat: "
-					+ event.getSeat()
+					+ event.getSeatID()
 					+ " sent game data: '"
 					+ event.getText()
 					+ "'");
-			enqueue(new GameSend(event.getSeat(), event.getText()));
+			enqueue(new GameSend(event.getSeatID(), event.getText()));
 		}
 
 		public void eventOccurred(GameEvent event) {
 			switch (event.getType()) {
 				case GameEvent.LEAVE_GAME :
-					_log.debug(event.getHandle() + " left game");
+					_log.debug(event.getName() + " left game");
 					break;
 			}
 		}
@@ -119,31 +120,21 @@ public class ObserveGame extends AbstractState {
 			//restoreState();
 		}
 
-		private void send(Action a) {
-			try {
-				_server.send(a);
-			} catch (IOException e) {
-				// leave game, and shut down.
-				_log.error("Link error", e);
-				_server.terminate();
-			}
-		}
-
 		/* (non-Javadoc)
 		 * @see org.jbrain.qlink.chat.GameEventListener#gameStarted(org.jbrain.qlink.chat.StartGameEvent)
 		 */
 		public void gameStarted(StartGameEvent event) {
-			_log.debug(event.getHandle() + " started game");
+			_log.debug(event.getSeat().getHandle() + " started game");
 			enqueue(new StartGame("GAME",event.getPlayOrder()));
 		}
 
 	};
 
 	private QueuedGameListener _listener=new QueuedGameListener();
-	public ObserveGame(QServer server, Room room, String handle) {
-		super(server);
+	public ObserveGame(QSession session, Room room, QHandle handle) {
+		super(session);
 		_room=room;
-		_sHandle=handle;
+		_handle=handle;
 	}
 	
 	/**
@@ -153,27 +144,27 @@ public class ObserveGame extends AbstractState {
 		if(_game != null && _game.isActive()) {
 			_game.removeListener(_listener);
 		}
-		_server.setState(_intState);
-		_server.enableOLMs(true);
+		_session.setState(_intState);
+		_session.enableOLMs(true);
 	}
 
 	public void activate() throws IOException {
-		_log.debug("Accessing game for '" + _sHandle + "'");
-		SeatInfo info=_room.getSeatInfo(_sHandle);
+		_log.debug("Accessing game for '" + _handle + "'");
+		QSeat info=_room.getSeatInfo(_handle);
 		if(info==null) {
-			_log.debug("'" + _sHandle + "' is not in room");
+			_log.debug("'" + _handle + "' is not in room");
 			// need to do something here.
 		} else {
-			_iSeat=info.getSeat();
-			_game=_room.observeGame(_sHandle);
+			_iSeat=info.getSeatID();
+			_game=_room.observeGame(_handle);
 			if(_game==null) {
-				_log.debug("'" + _sHandle + "' is not in game");
+				_log.debug("'" + _handle + "' is not in game");
 				// need to do something here.
 			} else {
-				_server.enableOLMs(false);
-				_intState=_server.getState();
+				_session.enableOLMs(false);
+				_intState=_session.getState();
 				super.activate();
-				_server.send(new LoadObservedGame(_game.getID(),_game.getName(), _game.getPlayOrder()));
+				_session.send(new LoadObservedGame(_game.getID(),_game.getName(), _game.getPlayOrder()));
 			}
 		}
 	}
@@ -183,7 +174,7 @@ public class ObserveGame extends AbstractState {
 		boolean rc=false;
 		
 		if(a instanceof RequestGameStart) {
-			_server.send(new StartObservedGame(_iSeat));
+			_session.send(new StartObservedGame(_iSeat));
 			_game.addListener(_listener);
 		} else if(a instanceof PlayBackMovesAck) {
 			_listener.resume();
@@ -196,7 +187,7 @@ public class ObserveGame extends AbstractState {
 	public void terminate() {
 		// go ahead and leave and remove the listener
 		restoreState();
-		_server.enableOLMs(false);
+		_session.enableOLMs(false);
 		_intState.terminate();
 	}
 }

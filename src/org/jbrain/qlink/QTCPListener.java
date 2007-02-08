@@ -30,25 +30,27 @@ import java.util.*;
 
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.connection.QConnection;
-import org.jbrain.qlink.db.DBUtils;
 
 
 
-public class QTCPListener {
+public class QTCPListener extends Thread {
 	private static Logger _log=Logger.getLogger(QTCPListener.class);
-	private static int _iPort=5190;
+	private int _iPort;
+	private QLinkServer _server;
 	
 	class ProxyThread extends Thread {
 		Socket _socket;
-		public ProxyThread(Socket s) {
+		public ProxyThread(QLinkServer server, Socket s) {
 			_socket=s;
+			setDaemon(true);
+			start();
 		}
 		
 		public void run() {
 			InputStream is;
 			OutputStream os;
 			QConnection conn;
-			QServer server;
+			QSession session;
 			
 			try {
 				is = _socket.getInputStream();
@@ -57,9 +59,8 @@ public class QTCPListener {
 				if(proxy.negotiate()) {
 					conn=new QConnection(is,os);
 					// we got through the Telenet cmds, now switch to QLink protocol.
-					server=new QServer(conn);
-					//not sure if we should track open servers or not.
-					//servers.add(server);
+					session=new QSession(_server,conn);
+					_server.addSession(session);
 				}
 			} catch (IOException e) {
 				_log.error(e);
@@ -68,21 +69,25 @@ public class QTCPListener {
 		}
 	}
 	
-	public int run() {
+	/**
+	 * @param server
+	 * @param port
+	 */
+	public QTCPListener(QLinkServer server, int port) {
+		_iPort=port;
+		_server=server;
+		//setDaemon(true);
+		start();
+	}
+
+	public void run() {
 		int rc=0;
 		ArrayList servers=new ArrayList();
 		QConnection conn;
-		QServer server;
+		QSession session;
  		ServerSocket serverSocket = null; 
 		Socket clientSocket = null; 
 		
-		_log.info("Starting server");
-		try {
-			DBUtils.init();
-		} catch (Exception e1) {
-			rc=-1;
-		}
-        
 		if(rc==0) {
 			try { 
 				serverSocket = new ServerSocket(_iPort); 
@@ -96,28 +101,14 @@ public class QTCPListener {
 				while(true) {
 					clientSocket = serverSocket.accept();
 					_log.info("Incoming connection received");
-					new ProxyThread(clientSocket).start();
+					new ProxyThread(_server,clientSocket);
 				}
 			} catch (IOException e) { 
 				_log.fatal("TCP/IP accept failed.",e);
 				rc=-1;
 			}
 		}
- 		_log.info("Terminating server");
- 		return rc;
+ 		_log.info("Terminating TCPListener for port " + _iPort);
 		
-	}
-
-	public static void main(String[] args) {
-		if(args.length>0) {
-			try {
-				_iPort=Integer.parseInt(args[0]);
-			} catch (NumberFormatException e) {
-				_log.fatal("Invalid port number '" + args[0] + "'");
-				System.exit(-1);	
-			}
-		}
-			
-		System.exit(new QTCPListener().run());
 	}
 }

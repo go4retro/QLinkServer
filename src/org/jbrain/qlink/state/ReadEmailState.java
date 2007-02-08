@@ -47,14 +47,14 @@ public class ReadEmailState extends AbstractState {
 	private QState _intState;
 
 	
-	public ReadEmailState(QServer server) {
-		super(server);
+	public ReadEmailState(QSession session) {
+		super(session);
 }
 	
 	public void activate() throws IOException {
 		if(checkEmail()) {
 			//StringBuffer sb=new StringBuffer();
-			_server.send(new ReadEmailAck());
+			_session.send(new ReadEmailAck());
 			TextFormatter tf=new TextFormatter();
 			tf.add(getNextEmail());
 			List l=tf.getList();
@@ -65,19 +65,19 @@ public class ReadEmailState extends AbstractState {
 				//sb.append("This is a test line");
 				//sb.append((char)0x01);
 				//sb.append("This is a test line");
-				_server.send(new EmailText((String)l.get(i),EmailText.LINE_NEXT));
-				//_server.send(new EmailText(sb.toString(),EmailText.LINE_NEXT));
+				_session.send(new EmailText((String)l.get(i),EmailText.LINE_NEXT));
+				//_session.send(new EmailText(sb.toString(),EmailText.LINE_NEXT));
 				//sb.setLength(0);
 			}
 			int flag=EmailText.LINE_LAST_NO_MORE_MAIL;
 			if(checkEmail()) {
 				flag=EmailText.LINE_LAST;
 			}
-			_server.send(new EmailText("End of Mail - Press F5 to cancel",flag));
-			_intState=_server.getState();
+			_session.send(new EmailText("End of Mail - Press F5 to cancel",flag));
+			_intState=_session.getState();
 			super.activate();
 		} else {
-			_server.send(new NoEmail());
+			_session.send(new NoEmail());
 		}
 
 	}
@@ -87,7 +87,7 @@ public class ReadEmailState extends AbstractState {
 		if(!(a instanceof LostConnection)) {
 			// delete email.
 		}
-		_server.setState(_intState);
+		_session.setState(_intState);
 		return _intState.execute(a);
 	}
 
@@ -105,8 +105,8 @@ public class ReadEmailState extends AbstractState {
         try {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
-            _log.debug("Getting next email for " + _server.getHandle());
-            rs=stmt.executeQuery("SELECT email_id,body FROM email WHERE unread='Y' AND recipient_id=" + _server.getAccountID() + " LIMIT 1");
+            _log.debug("Getting next email for " + _session.getHandle());
+            rs=stmt.executeQuery("SELECT email_id,body FROM email WHERE unread='Y' AND recipient_id=" + _session.getAccountID() + " LIMIT 1");
             if(rs.next()) {
             	String body=rs.getString("body");
                 stmt.execute("UPDATE email SET unread='N' WHERE email_id=" + rs.getInt("email_id"));

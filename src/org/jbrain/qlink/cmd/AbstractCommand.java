@@ -29,6 +29,8 @@ public abstract class AbstractCommand implements Command {
 	private byte _bCmd;
 	private byte _bSendSeq;
 	private byte _bRecvSeq;
+	protected int _iReportedCRC;
+	protected int _iCalculatedCRC;
 	
 	// you call this to create a command
 	public AbstractCommand(byte cmd) {
@@ -42,18 +44,17 @@ public abstract class AbstractCommand implements Command {
 	 * @param len
 	 */
 	// you call this on receipt of data
-	public AbstractCommand(byte[] data, int start, int len) throws CRCException {
-		int chk=((data[start+1]&0xf0 | data[start+2]&0x0f)<<8)|(data[start+3]&0xf0 | data[start+4]&0x0f);
+	public AbstractCommand(byte[] data, int start, int len) {
+		_iReportedCRC=((data[start+1]&0xf0 | data[start+2]&0x0f)<<8)|(data[start+3]&0xf0 | data[start+4]&0x0f);
 		CRC16 crc=new CRC16();
 		crc.update(data,start+5,len-5);
-		if(crc.getValue()!=chk) {
-			throw new CRCException(chk + "!=" + crc.getValue());
-		}
+		_iCalculatedCRC=(int)crc.getValue();
+		
 		_bCmd=data[start+7];
 		_bRecvSeq=data[start+5];
 		_bSendSeq=data[start+6];
 	}
-
+	
 	public void setRecvSequence(byte seq) {
 		_bRecvSeq=(byte)seq;
 	}

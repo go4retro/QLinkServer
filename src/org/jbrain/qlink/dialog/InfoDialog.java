@@ -29,12 +29,12 @@ import org.jbrain.qlink.cmd.action.*;
 
 public class InfoDialog extends AbstractDialog {
 	
-	public InfoDialog(String name, boolean bLogin) {
-		super(name, bLogin);
+	public InfoDialog(String name, int dialogType) {
+		super(name, dialogType);
 	}
 
-	public InfoDialog(String name, boolean bLogin, int format) {
-		super(name,bLogin, format);
+	public InfoDialog(String name, int dialogType, int format) {
+		super(name,dialogType, format);
 	}
 
 	/**

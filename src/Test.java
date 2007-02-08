@@ -1,3 +1,8 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.ArrayList;
+
 /*
  Copyright Jim Brain and Brain Innovations, 2005.
 
@@ -23,11 +28,26 @@
  */
 
 public class Test {
+	public static Connection getDBConnection() throws SQLException {
+		
+	    	return DriverManager.getConnection("jdbc:mysql://localhost/clink?user=clinkuser&password=clink");
+		}
 
-	public static void main(String[] args) {
-		String _handle="   jim   ".trim();
-		// uppercase first char
-		_handle=_handle.substring(0,1).toUpperCase() + _handle.substring(1);
-		System.out.println(_handle);
+	public static void main(String args[]) throws Exception {
+		ArrayList a=new ArrayList(5);
+		a.add(3,new Test());
+		System.out.println(a.get(0));
+        /*Connection conn;
+        Statement stmt = null;
+        ResultSet rs = null;
+		Class.forName("com.mysql.jdbc.Driver").newInstance();
+        
+    	conn=getDBConnection();
+        stmt = conn.createStatement();
+        try {
+        	stmt.execute("insert into accounts_fix (account_id) VALUES (5)",Statement.RETURN_GENERATED_KEYS);
+        } catch (Exception e) {
+        	e.printStackTrace();
+        }*/
 	}
 }

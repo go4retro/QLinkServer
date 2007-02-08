@@ -29,7 +29,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 import org.apache.log4j.Logger;
-import org.jbrain.qlink.QServer;
+import org.jbrain.qlink.QSession;
 import org.jbrain.qlink.cmd.action.*;
 
 
@@ -49,8 +49,8 @@ public class GatewayState extends AbstractState implements Runnable {
 	private InputStream _is;
 	private OutputStreamWriter _w;
 
-	public GatewayState(QServer server, String host, int port) {
-		super(server);
+	public GatewayState(QSession session, String host, int port) {
+		super(session);
 		_sHost=host;
 		_iPort=port;
 	}
@@ -64,24 +64,24 @@ public class GatewayState extends AbstractState implements Runnable {
 			_w = new OutputStreamWriter(sock.getOutputStream(),"ISO-8859-1");
 			_log.debug("Starting Gateway receive thread");
 			Thread t=new Thread(this);
-			_intState=_server.getState();
+			_intState=_session.getState();
 			super.activate();
 			t.setDaemon(true);
 			t.start();
 			bOpen=true;
 		} catch (UnknownHostException e) {
 			_log.error("Gateway service error",e);
-			_server.send(new GatewayExit("service unavailable"));
+			_session.send(new GatewayExit("service unavailable"));
 		} catch (ConnectException e) {
 			_log.error("Gateway service error",e);
-			_server.send(new GatewayExit("service unavailable"));
+			_session.send(new GatewayExit("service unavailable"));
 		} catch (IOException e) {
 			_log.error("Gateway service error",e);
-			_server.send(new GatewayExit("service unavailable"));
+			_session.send(new GatewayExit("service unavailable"));
 		}
 		if(bOpen) {
-			_server.send(new GatewayEnter());
-			_server.send(new DisableEcho());
+			_session.send(new GatewayEnter());
+			_session.send(new DisableEcho());
 		}
 	}
 
@@ -132,7 +132,7 @@ public class GatewayState extends AbstractState implements Runnable {
 					line=new String(data,0,len,"ISO-8859-1");
 					line=line.replaceAll("\r",ESC_CR);
 					line=line.replaceAll("\n","");
-					_server.send(new GatewaySend(line));
+					_session.send(new GatewaySend(line));
 				}
 			}
 			// someone shut us down..
@@ -149,15 +149,9 @@ public class GatewayState extends AbstractState implements Runnable {
 	}
 	
 	private void exit(String text) {
-		try {
-			_server.send(new GatewayExit(text));
-			_server.setState(_intState);
-			close();
-		} catch (IOException e) {
-			_log.error("IO Error",e);
-			_server.terminate();
-		}
-		
+		_session.send(new GatewayExit(text));
+		_session.setState(_intState);
+		close();
 	}
 
 	/**

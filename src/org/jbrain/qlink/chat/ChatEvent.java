@@ -26,37 +26,23 @@ package org.jbrain.qlink.chat;
 import java.util.EventObject;
 
 public class ChatEvent extends EventObject implements RoomEvent {
-	private int _iFromSeat;
-	private String _sFromName;
-	private boolean _bSeated;
+	private int _seat;
+	private String _handle;
 	private String _sText;
 
-	public ChatEvent(Object obj, String name, String text) {
+	public ChatEvent(Object obj, int id, String handle, String text) {
 		super(obj);
-		_iFromSeat=0;
-		_sFromName=name;
-		_bSeated=false;
+		_seat=id;
+		_handle=handle;
 		_sText=text;
 	}
 	
-	public ChatEvent(Object obj,int seat, String text) {
-		super(obj);
-		_iFromSeat=seat;
-		_sFromName="";
-		_bSeated=true;
-		_sText=text;
+	public int getSeatID() {
+		return _seat;
 	}
 	
-	public int getOriginatingSeat() {
-		return _iFromSeat;
-	}
-	
-	public String getOriginatingName() {
-		return _sFromName;
-	}
-	
-	public boolean isSeated() {
-		return _bSeated;
+	public String getName() {
+		return _handle;
 	}
 	
 	public String getText() {

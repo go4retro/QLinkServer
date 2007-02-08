@@ -26,9 +26,9 @@ package org.jbrain.qlink.chat;
 import java.util.EventObject;
 
 public class GameEvent extends EventObject implements RoomEvent {
-	private int _iSeat;
+	private int _seat;
+	private String _name;
 	private int _iType;
-	private String _sHandle;
 	
 	public static final int READY_TO_START=1;
 	public static final int REQUEST_RESTART=2;
@@ -39,23 +39,23 @@ public class GameEvent extends EventObject implements RoomEvent {
 	public static final int REQUEST_LOAD = 7;
 	public static final int LEAVE_GAME = 8;
 
-	public GameEvent(Object obj,int type, int seat, String handle) {
+	public GameEvent(Object obj,int type, int id,String name) {
 		super(obj);
-		_iSeat=seat;
+		_seat=id;
+		_name=name;
 		_iType=type;
-		_sHandle=handle;
 	}
 	
-	public int getSeat() {
-		return _iSeat;
+	public int getSeatID() {
+		return _seat;
+	}
+	
+	public String getName() {
+		return _name;
 	}
 	
 	public int getType() {
 		return _iType;
-	}
-	
-	public String getHandle() {
-		return _sHandle;
 	}
 	
 }

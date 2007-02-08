@@ -48,7 +48,7 @@ public class MenuItem extends AbstractMenuItem {
 	public static final int UNKNOWN_8C = 0x8C;
 	public static final int UPLOAD = 0x8d;
 	public static final int UNKNOWN_8E = 0x8E;
-	public static final int DIALOG = 0x8F;
+	public static final int MENU_DATA = 0x8F;
 	public static final int FILE_DESC = 0x90;
 	
 	public static final int COST_NORMAL=2;

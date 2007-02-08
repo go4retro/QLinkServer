@@ -25,15 +25,12 @@ package org.jbrain.qlink.chat;
 
 public class Auditorium extends AbstractRoom {
 
-	private String _sHandle;
-
-	public Auditorium(AuditoriumDelegate room, String handle) {
-		super(room);
-		_sHandle=handle;
+	public Auditorium(AuditoriumDelegate room, QSeat user) {
+		super(room,user);		
 }
 
 	public void say(String[] text) {
-		((AuditoriumDelegate)_room).queue(_sHandle,text);
+		((AuditoriumDelegate)_room).queue(_user.getHandle(),text);
 	}
 
 	public void say(String text) {
@@ -67,6 +64,14 @@ public class Auditorium extends AbstractRoom {
 		return _room.getInfo();
 	}
 
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.Room#getSeatInfoList()
+	 */
+	public QSeat[] getSeatInfoList() {
+		return _room.getSeatInfoList(_user);
+		
+	}
+
 	/**
 	 * @return
 	 */
@@ -74,15 +79,15 @@ public class Auditorium extends AbstractRoom {
 		return ((AuditoriumDelegate)_room).isAcceptingQuestions();
 	}
 
-	protected void processSystemMessageEvent(SystemMessageEvent event) {
-		// is it to us or broadcast?
-		if(event.getRecipientSeat()==SystemMessageEvent.SEAT_BROADCAST)
-			super.processSystemMessageEvent(event);
-	}
-	
 	public void leave() {
-		RoomManager.leaveAuditorium(_sHandle);
+		RoomManager.leaveAuditorium(_user.getHandle());
 		super.leave();
 	}
 
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.Room#getExtSeatInfoList()
+	 */
+	public QSeat[] getExtSeatInfoList() {
+		return _room.getSeatInfoList(_user);
+	}
 }

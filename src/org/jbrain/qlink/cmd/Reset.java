@@ -29,9 +29,16 @@ public class Reset extends AbstractCommand {
 	private byte _bRelease;
 
 	public static final byte CMD_RESET=0x23;
+	private boolean _bSuper=false;
 
 	public Reset(byte[] data, int start, int len) throws CRCException {
-		super(data, start, len);
+		super(data,start,len);
+		if(data[start+1]==0 && data[start+2] ==0 && data[start+3]==0 && data[start+4] ==0) {
+			// special Reset;
+			_bSuper=true;
+		} else if(_iReportedCRC!=_iCalculatedCRC) {
+			throw new CRCException(_iReportedCRC + "!=" + _iCalculatedCRC);
+		}
 		_bVersion=data[start+9];
 		_bRelease=data[start+8];
 	}
@@ -56,5 +63,12 @@ public class Reset extends AbstractCommand {
 		data[8]=_bRelease;
 		finalizeCmd(data);
 		return data;
+	}
+
+	/**
+	 * @return
+	 */
+	public boolean isSuperQ() {
+		return _bSuper;
 	}
 }

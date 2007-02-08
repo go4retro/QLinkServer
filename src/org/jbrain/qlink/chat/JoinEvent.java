@@ -30,26 +30,26 @@ public class JoinEvent extends EventObject implements RoomEvent {
 	public static final int EVENT_LEAVE=2;
 	
 	private int _iType;
-	private int _iSeat;
-	private String _sName;
+	private int _seat;
+	private String _name;
 
-	public JoinEvent(Object obj, int type, int seat, String name) {
+	public JoinEvent(Object obj, int type, int id, String name) {
 		super(obj);
 		_iType=type;
-		_iSeat=seat;
-		_sName=name;
+		_seat=id;
+		_name=name;
 	}
 	
-	public int getSeat() {
-		return _iSeat;
+	public int getSeatID() {
+		return _seat;
+	}
+	
+	public String getName() {
+		return _name;
 	}
 	
 	public int getType() {
 		return _iType;
 	}
 	
-	public String getName() {
-		return _sName;
-	}
-
 }

@@ -23,9 +23,19 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-public class CreateLoginDialog extends AbstractStringAction {
-	
-	public CreateLoginDialog(String name) {
-		super("ZM",name);
+import org.jbrain.qlink.cmd.CRCException;
+
+
+public class DeleteAccountInSlotAck extends AbstractAction {
+
+	public static final String MNEMONIC = "BU";
+	/**
+	 * @param data
+	 * @param start
+	 * @param len
+	 * @throws CRCException
+	 */
+	public DeleteAccountInSlotAck(byte[] data, int start, int len) throws CRCException {
+		super(data, start, len);
 	}
 }

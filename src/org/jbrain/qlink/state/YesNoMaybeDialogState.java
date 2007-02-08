@@ -34,8 +34,8 @@ import org.jbrain.qlink.dialog.*;
 public class YesNoMaybeDialogState extends AbstractDialogState {
 	private static Logger _log=Logger.getLogger(YesNoMaybeDialogState.class);
 	
-	public YesNoMaybeDialogState(QServer server, AbstractDialog dialog, DialogCallBack callback) {
-		super(server,dialog,callback);
+	public YesNoMaybeDialogState(QSession session, YesNoDialog dialog, DialogCallBack callback) {
+		super(session,dialog,callback);
 	}
 	
 	public boolean execute(Action a) throws IOException {
@@ -45,8 +45,9 @@ public class YesNoMaybeDialogState extends AbstractDialogState {
         // handle global stuff here
         switch(getPhase()) {
         	case PHASE_RESPONSE:
-        		_server.send(new ChatDialogClose());
-        		// don't set rc to true, and it will get propogated
+        		//if(_dialog.getDialogType()==AbstractDialog.TYPE_CHAT)
+        		//	_session.send(new ChatDialogClose());
+    			// don't set rc to true, and it will get propogated
         		break;
         }
         if(!rc)

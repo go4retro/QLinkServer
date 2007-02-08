@@ -25,6 +25,8 @@ package org.jbrain.qlink.chat;
 
 import java.util.List;
 
+import org.jbrain.qlink.user.QHandle;
+
 
 public class Game {
 
@@ -35,22 +37,22 @@ public class Game {
 	 */
 	private GameDelegate _game;
 
-	private int _iSeat;
+	private QSeat _seat;
 
 	/**
 	 * 
 	 * @uml.property name="_room"
 	 * @uml.associationEnd multiplicity="(1 1)"
 	 */
-	private RoomDelegate _room;
+	private QRoom _room;
 
 	/**
 	 * @param _seat
 	 * @param delegate
 	 */
-	public Game(RoomDelegate room, int seat, GameDelegate delegate) {
+	public Game(QRoom room, QSeat seat, GameDelegate delegate) {
 		_game=delegate;
-		_iSeat=seat;
+		_seat=seat;
 		_room=room;
 	}
 
@@ -58,14 +60,14 @@ public class Game {
 	 * 
 	 */
 	public void acceptInvite() {
-		_game.acceptInvite(_iSeat);
+		_game.acceptInvite(_seat);
 	}
 
 	/**
 	 * 
 	 */
 	public void declineInvite() {
-		_game.declineInvite(_iSeat);
+		_game.declineInvite(_seat);
 	}
 
 	/**
@@ -81,7 +83,7 @@ public class Game {
 	 * @throws UserMismatchException
 	 * @throws UserNotInRoomException
 	 */
-	public boolean addPlayer(String handle) throws UserNotInRoomException {
+	public boolean addPlayer(QHandle handle) throws UserNotInRoomException {
 		return _game.addPlayer(handle);
 	}
 
@@ -126,14 +128,14 @@ public class Game {
 	 * @param text
 	 */
 	public void send(String text) {
-		_game.send(_iSeat,text);
+		_game.send(_seat,text);
 	}
 
 	/**
 	 * 
 	 */
 	public void requestRestart() {
-		_game.requestRestart(_iSeat);
+		_game.requestRestart(_seat);
 		
 	}
 
@@ -141,7 +143,7 @@ public class Game {
 	 * 
 	 */
 	public void acceptRestart() {
-		_game.acceptRestart(_iSeat);
+		_game.acceptRestart(_seat);
 		
 	}
 
@@ -149,14 +151,14 @@ public class Game {
 	 * 
 	 */
 	public void requestLoad() {
-		_game.requestLoad(_iSeat);
+		_game.requestLoad(_seat);
 	}
 
 	/**
 	 * 
 	 */
 	public void readyToStart() {
-		_game.readyToStart(_iSeat);
+		_game.readyToStart(_seat);
 	}
 
 	public List getAbstainList() {
@@ -167,7 +169,7 @@ public class Game {
 	 * 
 	 */
 	public void leave() {
-		_game.leave(_iSeat);
+		_game.leave(_seat);
 		
 	}
 
@@ -175,7 +177,7 @@ public class Game {
 	 * 
 	 */
 	public void restart() {
-		_game.restart(_iSeat);
+		_game.restart(_seat);
 	}
 
 	/**
@@ -189,15 +191,14 @@ public class Game {
 	 * 
 	 */
 	public void start() {
-		_game.start(_iSeat);
+		_game.start(_seat);
 	}
 
 	/**
 	 * 
 	 */
 	public void declineRestart() {
-		_game.declineRestart(_iSeat);
-		// TODO Auto-generated method stub
+		_game.declineRestart(_seat);
 		
 	}
 

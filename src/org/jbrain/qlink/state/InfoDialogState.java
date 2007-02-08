@@ -31,7 +31,7 @@ import org.jbrain.qlink.dialog.*;
 
 public class InfoDialogState extends AbstractDialogState {
 	private static Logger _log=Logger.getLogger(InfoDialogState.class);
-	public InfoDialogState(QServer server, AbstractDialog dialog, DialogCallBack callback) {
-		super(server,dialog,callback);
+	public InfoDialogState(QSession session, AbstractDialog dialog, DialogCallBack callback) {
+		super(session,dialog,callback);
 	}
 }

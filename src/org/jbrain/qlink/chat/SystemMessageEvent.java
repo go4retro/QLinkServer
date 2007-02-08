@@ -26,24 +26,24 @@ package org.jbrain.qlink.chat;
 import java.util.EventObject;
 
 public class SystemMessageEvent extends EventObject implements RoomEvent {
-	private int _iToSeat;
-	private String _sName;
+	private int _seat;
+	private String _name;
 	private String[] _msg;
-	public static final int SEAT_BROADCAST = -1;
+	public static int SEAT_BROADCAST=-1;
 
-	public SystemMessageEvent(Object obj, String name, int to_seat,String[] msg) {
-		super(obj);
-		_sName=name;
-		_iToSeat=to_seat;
+	public SystemMessageEvent(QRoom room, int seatID, String name, String[] msg) {
+		super(room);
+		_seat=seatID;
+		_name=name;
 		_msg=msg;
 	}
-	
-	public String getOriginatingName() {
-		return _sName;
+
+	public int getSeatID() {
+		return _seat;
 	}
-	
-	public int getRecipientSeat() {
-		return _iToSeat;
+
+	public String getName() {
+		return _name;
 	}
 
 	public String[] getMessage() {

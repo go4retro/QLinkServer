@@ -27,17 +27,17 @@ public abstract class AbstractDialogState extends AbstractPhaseState {
 	 */
 	protected DialogCallBack _callback;
 
-	public AbstractDialogState(QServer server, AbstractDialog d, DialogCallBack callback) {
-		super(server,PHASE_ALLOCATE);
+	public AbstractDialogState(QSession session, AbstractDialog d, DialogCallBack callback) {
+		super(session,PHASE_ALLOCATE);
 		_dialog=d;
 		_callback=callback;
 	}
 	
 	public void activate() throws IOException {
 		//_log.info("PHASE: Initiating dialog:" + _dialog.getName());
-    	//_server.send(new ClearScreen());
+    	//_session.send(new ClearScreen());
 		// acknowledge dialog state.
-		_server.send(_dialog.getPrepAction());
+		_session.send(_dialog.getPrepAction());
 		if(_log.isInfoEnabled())
 			_log.info("PHASE: Allocating dialog: " + _dialog.getName());
     	super.activate();
@@ -53,12 +53,12 @@ public abstract class AbstractDialogState extends AbstractPhaseState {
 				if(a instanceof ClearScreen) {
 					// ignore this.
 					rc=true;
-				} else if(a instanceof LoginDialogAllocated || 
+				} else if(a instanceof DialogAllocated || 
 					a instanceof ChatDialogAllocated) {
 					// dialog has been allocated, send data
 					_log.debug("Sending dialog data");
-		        	_server.send(_dialog.getTextActions());
-		        	_server.send(_dialog.getResponseAction());
+		        	_session.send(_dialog.getTextActions());
+		        	_session.send(_dialog.getResponseAction());
 					_log.info("PHASE: Waiting for dialog response");
 					setPhase(PHASE_RESPONSE);
 					rc=true;

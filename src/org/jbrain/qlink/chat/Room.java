@@ -23,77 +23,25 @@
  */
 package org.jbrain.qlink.chat;
 
+import org.jbrain.qlink.user.QHandle;
+
 public interface Room {
 
-	/**
-	 * @return
-	 * 
-	 * @uml.property name="name" multiplicity="(0 1)"
-	 */
 	public abstract String getName();
-
-
-	/**
-	 * @return
-	 */
 	public abstract int getPopulation();
-
-	/**
-	 * @param i
-	 * @return
-	 */
-	public abstract SeatInfo[] getSeatInfoList();
-
+	public abstract QSeat[] getSeatInfoList();
+	public abstract QSeat[] getExtSeatInfoList();
 	public abstract void addEventListener(RoomEventListener listener);
 	public abstract void removeEventListener(RoomEventListener listener);
-
 	public abstract void say(String[] text);
-
 	public abstract void say(String text);
-
 	public abstract void leave();
-
-	/**
-	 * @param name
-	 * @param type
-	 * @param systemPickOrder
-	 * @return
-	 */
 	public abstract Game createGame(int id, String name, String type, boolean systemPickOrder);
-
-	/**
-	 * @return
-	 * 
-	 * @uml.property name="pendingGame"
-	 * @uml.associationEnd multiplicity="(0 1)"
-	 */
 	public abstract Game getPendingGame();
-
-
-	/**
-	 * @param handle
-	 * @return
-	 */
-	public abstract SeatInfo getSeatInfo(String handle);
-
-	/**
-	 * @return
-	 */
+	public abstract QSeat getSeatInfo(QHandle handle);
 	public abstract boolean isPublicRoom();
-	
 	public GameInfo[] getGameInfoList();
-
-	/**
-	 * 
-	 * @uml.property name="info" multiplicity="(0 1)"
-	 */
 	public String getInfo();
-
-
-	/**
-	 * @param handle
-	 * @return
-	 */
-	public abstract ObservedGame observeGame(String handle);
-
+	public abstract ObservedGame observeGame(QHandle handle);
+	public abstract boolean changeUserName(QHandle handle, ChatProfile profile);
 }

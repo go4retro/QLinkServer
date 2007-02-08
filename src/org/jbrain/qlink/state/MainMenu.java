@@ -31,7 +31,7 @@ import java.sql.Statement;
 import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.jbrain.qlink.QServer;
+import org.jbrain.qlink.QSession;
 import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.db.DBUtils;
 import org.jbrain.qlink.text.TextFormatter;
@@ -39,9 +39,10 @@ import org.jbrain.qlink.text.TextFormatter;
 
 public class MainMenu extends AbstractState {
 	private static Logger _log=Logger.getLogger(MainMenu.class);
+	private boolean _bSuperChat=false;
 
-	public MainMenu(QServer server) {
-		super(server);
+	public MainMenu(QSession session) {
+		super(session);
 	}
 	
 	public void activate() throws IOException {
@@ -64,7 +65,7 @@ public class MainMenu extends AbstractState {
         	if(rs.next()) {
         		_log.debug("Defining Bulletin");
         		TextFormatter tf=new TextFormatter();
-        		tf.add("WELCOME TO Q-LINK, " + _server.getHandle());
+        		tf.add("WELCOME TO Q-LINK, " + _session.getHandle());
         		tf.add("\n");
         		do {
             		tf.add(rs.getString("text"));
@@ -78,27 +79,24 @@ public class MainMenu extends AbstractState {
             	for(int i=0;i<size;i++) {
             		line=(String)l.get(i);
             		if((sb.length()+ 1 + line.length()) > 117) {
-                		_server.send(new BulletinLine(sb.toString(),i+1==size));
+                		_session.send(new BulletinLine(sb.toString(),false));
                 		// strange, a trailing xff is not honored.
                 		if(sb.charAt(sb.length()-1) == 0xff && sb.charAt(sb.length()-2)!=0xff) {
                 			sb.setLength(0);
                 			sb.append(delim);
-                			sb.append(line);
                 		} else {
                 			sb.setLength(0);
-                			sb.append(line);
                 		}
+            			sb.append(line);
             		} else {
             			sb.append(delim);
             			sb.append(line);
             		}
             	}
-            	if(sb.length()>0) {
-            		_server.send(new BulletinLine(sb.toString(),true));
-            	}
+        		_session.send(new BulletinLine(sb.toString(),true));
         	} else {
         		// we have no bulletin data.
-        		_server.send(new DisplayMainMenu());
+        		_session.send(new DisplayMainMenu());
         	}
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);
@@ -115,12 +113,18 @@ public class MainMenu extends AbstractState {
 		
 		if(a instanceof EnterMessageBoard) {
 			rc=true;
-			state=new DepartmentMenu(_server);
+			state=new DepartmentMenu(_session);
 			state.activate();
-		} else if(a instanceof MR) {
+		} else if(a instanceof EnterChat) {
 			rc=true;
-			state=new Chat(_server);
+			if(_bSuperChat)
+				state=new SuperChat(_session);
+			else
+				state=new Chat(_session);
 			state.activate();
+		} else if(a instanceof EnterSuperChat) {
+			_bSuperChat=true;
+			rc=true;
 		}
 		if(!rc)
 			rc=super.execute(a);

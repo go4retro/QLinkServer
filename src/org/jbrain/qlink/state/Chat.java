@@ -32,159 +32,32 @@ import org.jbrain.qlink.*;
 import org.jbrain.qlink.chat.*;
 import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.text.TextFormatter;
-import org.jbrain.qlink.util.QuotedStringTokenizer;
+import org.jbrain.qlink.user.AccountInfo;
+import org.jbrain.qlink.user.QHandle;
+import org.jbrain.qlink.user.UserManager;
 
-public class Chat extends AbstractState {
+public class Chat extends AbstractChatState {
 	private static Logger _log=Logger.getLogger(Chat.class);
-
-	private Room _room;
 	private int _iSeat;
-	private QueuedChatEventListener _listener;
 	private RoomInfo[] _rooms;
 	private int _roomPos;
 	private ArrayList _alQuestion=new ArrayList();
 	
-	class QueuedChatEventListener implements RoomEventListener {
-		private boolean _bSuspend=true;
-		private ArrayList _alQueue=new ArrayList();
-
-		/* (non-Javadoc)
-		 * @see org.jbrain.qlink.chat.BasicRoomEventListener#eventOccurred(org.jbrain.qlink.chat.RoomEvent)
-		 */
-		public synchronized void suspend() {
-			_bSuspend=true;
-		}
-		
-		public synchronized void resume() {
-			RoomEvent e;
-			
-			_bSuspend=false;
-			while(_alQueue.size()>0) {
-				e=(RoomEvent)_alQueue.remove(0);
-				if(e instanceof ChatEvent)
-					userSaid((ChatEvent)e);
-				else if(e instanceof SystemMessageEvent)
-					systemSent((SystemMessageEvent)e);
-				else if(e instanceof JoinEvent && ((JoinEvent)e).getType()==JoinEvent.EVENT_JOIN)
-					userJoined((JoinEvent)e);
-				else if(e instanceof JoinEvent && ((JoinEvent)e).getType()==JoinEvent.EVENT_LEAVE)
-					userLeft((JoinEvent)e);
-				else if(e instanceof QuestionStateEvent && ((QuestionStateEvent)e).getType()==QuestionStateEvent.ACCEPTING_QUESTIONS)
-					acceptingQuestions((QuestionStateEvent)e);
-				else if(e instanceof QuestionStateEvent && ((QuestionStateEvent)e).getType()==QuestionStateEvent.NOT_ACCEPTING_QUESTIONS)
-					rejectingQuestions((QuestionStateEvent)e);
-			}
-		}
-		public void userSaid(ChatEvent event) {
-			if(_bSuspend)
-				_alQueue.add(event);
-			else
-				if(event.isSeated()) {
-					if(_log.isDebugEnabled())
-						_log.debug("Seat: " + event.getOriginatingSeat() + " says: '" + event.getText() +"'");
-					try {
-						_server.send(new ChatSend(event.getOriginatingSeat(),event.getText()));
-					} catch (IOException e) {
-						// leave chat, and shut down.
-						_log.error("Link error",e);
-						_server.terminate();
-					}
-				} else {
-					if(_log.isDebugEnabled())
-						_log.debug(event.getOriginatingName() + " says: '" + event.getText() +"'");
-					try {
-						_server.send(new AnonChatSend(event.getOriginatingName(),event.getText()));
-					} catch (IOException e) {
-						// leave chat, and shut down.
-						_log.error("Link error",e);
-						_server.terminate();
-					}
-				}
-			
-		}
-
-		public void userJoined(JoinEvent event) {
-			if(_bSuspend)
-				_alQueue.add(event);
-			else {
-				if(_log.isDebugEnabled())
-					_log.debug(event.getName() + " enters room in seat " + event.getSeat());
-				try {
-					_server.send(new CA(event.getSeat(),event.getName()));
-				} catch (IOException e) {
-					// leave chat, and shut down.
-					_log.error("Link error",e);
-					_server.terminate();
-				}
-			}
-			
-		}
-
-		public void userLeft(JoinEvent event) {
-			if(_bSuspend)
-				_alQueue.add(event);
-			else {
-				if(_log.isDebugEnabled())
-					_log.debug(event.getName() + " leaves room and vacates seat " + event.getSeat());
-				try {
-					_server.send(new CB(event.getSeat(),event.getName()));
-				} catch (IOException e) {
-					// leave chat, and shut down.
-					_log.error("Link error",e);
-					_server.terminate();
-				}
-			}
-		}
-
-		public void systemSent(SystemMessageEvent event) {
-			// send ourselves an OLM, as we requested it.
-			String[] msg=event.getMessage();
-			_server.sendOLM(true,msg);
-			
-		}
-
-		public void acceptingQuestions(QuestionStateEvent event) {
-			try {
-				_server.send(new AcceptingQuestions());
-			} catch (IOException e) {
-				// leave chat, and shut down.
-				_log.error("Link error",e);
-				_server.terminate();
-			}
-		}
-
-		public void rejectingQuestions(QuestionStateEvent event) {
-			try {
-				_server.send(new RejectingQuestions());
-			} catch (IOException e) {
-				// leave chat, and shut down.
-				_log.error("Link error",e);
-				_server.terminate();
-			}
-		}
+	public Chat(QSession session) {
+		super(session);
+		session.enableOLMs(true);
 	}
-
-	public Chat(QServer server) {
-		super(server);
-		server.enableOLMs(true);
-}
 	
 	public void activate() throws IOException {
-		SeatInfo[] seats;
+		QSeat[] seats;
 		
+		super.activate();
+		_log.debug(_session.getHandle() + " joins Lobby");
 		// find a Lobby to enter, get our seat number, etc.
 		// need to make sure no enter/leaves slip by while in here.
-		_room=RoomManager.join(_server.getHandle());
-		// create new listener.
-		_listener=new QueuedChatEventListener();
-		synchronized(_room) {
-			_log.debug("Adding room listener");
-			_room.addEventListener(_listener);
-			_log.debug("Getting seat information");
-			seats=_room.getSeatInfoList();
-		}
-		showRoom(seats,false);
-		super.activate();
+		_room=RoomManager.join(_session.getHandle(),getProfile(_session.getAccountInfo()));
+		seats=addListener();
+		sendRoomInfo(seats);
 	}
 
 	/* (non-Javadoc)
@@ -193,22 +66,20 @@ public class Chat extends AbstractState {
 	public boolean execute(Action a) throws IOException {
 		boolean rc=false;
 		QState state;
+		AccountInfo info;
+		QHandle handle;
 		
-		if(a instanceof ChatSay) {
-			_log.debug(_server.getHandle() + " says: '" + ((ChatSay)a).getText() + "'");
-			process(((ChatSay)a).getText());
-			rc=true;
-		} else if(a instanceof RequestGame) {
+		if(a instanceof RequestGame) {
 			int id=((RequestGame)a).getID();
 			String name=((RequestGame)a).getTitle();
 			String type=((RequestGame)a).getType();
 			boolean order=((RequestGame)a).doesSystemPickOrder();
-			_log.debug(_server.getHandle() + " wants to play " + name);
-			state=new PlayGame(_server,_room,id,name,type,order);
+			_log.debug(_session.getHandle() + " wants to play " + name);
+			state=new PlayGame(_session,_room,id,name,type,order);
 			state.activate();
 		} else if(a instanceof AcceptInvite) {
 			Game game=_room.getPendingGame();
-			state=new PlayGame(_server,game);
+			state=new PlayGame(_session,game);
 			state.activate();
 		} else if(a instanceof DeclineInvite) {
 			Game game=_room.getPendingGame();
@@ -227,12 +98,12 @@ public class Chat extends AbstractState {
 			GameInfo[] games=_room.getGameInfoList();
 			int i;
 			if(games.length==0) {
-				_server.send(new NoGames());
+				_session.send(new NoGames());
 			} else {
 				for(i=0;i<games.length-1;i++) {
-					_server.send(new GameLine(games[i].getName(),games[i].getPlayOrder(),false));
+					_session.send(new GameLine(games[i].getName(),games[i].getPlayOrder(),false));
 				}
-				_server.send(new GameLine(games[i].getName(),games[i].getPlayOrder(),true));
+				_session.send(new GameLine(games[i].getName(),games[i].getPlayOrder(),true));
 			}
 		} else if(a instanceof EnterPublicRoom) {
 			_log.debug("Entering public room");
@@ -242,67 +113,58 @@ public class Chat extends AbstractState {
 			_log.debug("Entering private room");
 			rc=true;
 			enterRoom(((EnterPrivateRoom)a).getRoom(),false);
-		} else if(a instanceof IdentifyUser) {
-			String name=((IdentifyUser)a).getData();
-			_log.debug("Trying to identify user: '" + name + "'");
-			if(_server.getIDByName(name)==-1) {
-				_log.debug("ID Error: No such user");
-				_server.send(new UserInvalid());
-			} else {
-				_server.send(new BulletinLine("Location:",false));
-				_server.send(new BulletinLine("Somewhere, SomeState",true));
-			}
 		} else if(a instanceof LocateUser) {
-			String name=((LocateUser)a).getData();
-			_log.debug("Trying to locate user: '" + name + "'");
-			if(_server.getIDByName(name)==-1) {
+			handle=new QHandle(((LocateUser)a).getData());
+			_log.debug("Trying to locate user: '" + handle + "'");
+			info=UserManager.getAccount(handle);
+			if(info==null) {
 				_log.debug("LOCATE Error: No such user");
-				_server.send(new UserInvalid());
-			} else if(!_server.isUserOnline(name)) {
+				_session.send(new UserInvalid());
+			} else if(!_session.getServer().isUserOnline(handle)) {
 				_log.debug("LOCATE Error: User is not online");
-				_server.send(new UserNotOnline());
+				_session.send(new UserNotOnline());
 			} else {
-				RoomInfo room=RoomManager.getUserLocation(name);
+				RoomInfo room=RoomManager.getUserLocation(handle);
 				if(room==null) {
 					_log.debug("LOCATE Error: User is unavailable");
-					_server.send(new UserUnavailable());
+					_session.send(new UserUnavailable());
 				} else if(room.isPublicRoom()) {
-					_log.debug("LOCATE Success:  User '" + name + "' is in public room '" + room.getName() + "'");
-					_server.send(new LocateUserText(room.getName()));
+					_log.debug("LOCATE Success:  User '" + handle + "' is in public room '" + room.getName() + "'");
+					_session.send(new LocateUserText(room.getName()));
 				} else {
-					_log.debug("LOCATE Success:  User '" + name + "' is in private room '" + room.getName() + "'");
-					_server.send(new UserInPrivateRoom());
+					_log.debug("LOCATE Success:  User '" + handle + "' is in private room '" + room.getName() + "'");
+					_session.send(new UserInPrivateRoom());
 				}
 			}
 		} else if(a instanceof LeaveChat) {
 			// we need to ack this.
 			_log.debug("Leaving chat");
 			leaveRoom();
-			state=new DepartmentMenu(_server);
+			state=new DepartmentMenu(_session);
 			state.activate();
 		} else if(a instanceof IgnoreUser) {
 			_log.debug("Ignoring user: " + ((IgnoreUser)a).getData());
-			//_server.send(new IgnoreUser());
+			//_session.send(new IgnoreUser());
 		} else if(a instanceof DeIgnoreUser) {
 			_log.debug("Not Ignoring user: " + ((DeIgnoreUser)a).getData());
-			//_server.send(new DeIgnoreUser());
+			//_session.send(new DeIgnoreUser());
 		} else if(a instanceof EnterAuditorium) {
 			enterAuditorium();
 		} else if(a instanceof RequestToObserve) {
-			String handle=((RequestToObserve)a).getHandle();
+			handle=new QHandle(((RequestToObserve)a).getHandle());
 			_log.debug("User requesting to observe " + handle + "'s game.");
 			// we should ask permission, but no matter
 			String name=((RequestToObserve)a).getHandle();
-			state=new ObserveGame(_server, _room, name);
+			state=new ObserveGame(_session, _room, new QHandle(name));
 			state.activate();
-		} else if(a instanceof MR) {
+		} else if(a instanceof EnterChat) {
 			// we get this after coming back from game
-			SeatInfo[] seats;
+			QSeat[] seats;
 			synchronized(_room) {
 				_listener.suspend();
 				seats=_room.getSeatInfoList();
 			}
-			showRoom(seats,false);
+			sendRoomInfo(seats);
 		} else if(a instanceof QuestionNextLine) {
 			_alQuestion.add(((QuestionNextLine)a).getData());
 		} else if(a instanceof QuestionLastLine) {
@@ -311,35 +173,35 @@ public class Chat extends AbstractState {
 			_room.say((String[])_alQuestion.toArray(new String[_alQuestion.size()]));
 			_alQuestion.clear();
 		} else if(a instanceof IncludeMe) {
-			_server.send(new PartnerSearchMessage("This is not implemented yet"));
+			_session.send(new PartnerSearchMessage("This is not implemented yet"));
 		} else if(a instanceof ExcludeMe) {
-			_server.send(new PartnerSearchMessage("This is not implemented yet"));
+			_session.send(new PartnerSearchMessage("This is not implemented yet"));
 		} else if(a instanceof PartnerSearchStatusRequest) {
-			_server.send(new PartnerSearchMessage("This is not implemented yet"));
+			_session.send(new PartnerSearchMessage("This is not implemented yet"));
 		} else if(a instanceof CancelPartnerSearch) {
-			_server.send(new PartnerSearchMessage("This is not implemented yet"));
+			_session.send(new PartnerSearchMessage("This is not implemented yet"));
 		} else if(a instanceof FindPartners) {
-			_log.debug(_server.getHandle() + " wants system to pick partners for " + ((FindPartners)a).getTitle());
-			_server.send(new FindPartnersAck());
+			_log.debug(_session.getHandle() + " wants system to pick partners for " + ((FindPartners)a).getTitle());
+			_session.send(new FindPartnersAck());
 		} else if(a instanceof SelectPartner) {
 			_log.debug("Adding " + ((SelectPartner)a).getHandle() + " to partner list");
 			
 		} else if(a instanceof FindMorePartners) {
 			_log.debug("System needs to find  " + ((FindMorePartners)a).getNumberToFind());
-			_server.send(new FindPartnersAck());
+			_session.send(new FindPartnersAck());
 		} else if(a instanceof EnterBoxOffice) {
 			// this is not correct...
 			enterRoom("BoxOffice",false);
-    		_server.send(new AuditoriumText("Heading",false));
-    		_server.send(new AuditoriumText("    Item 1",false));
-    		_server.send(new AuditoriumText("    Item 2",false));
-    		_server.send(new AuditoriumText("    Item 3",true));
+    		_session.send(new AuditoriumText("Heading",false));
+    		_session.send(new AuditoriumText("    Item 1",false));
+    		_session.send(new AuditoriumText("    Item 2",false));
+    		_session.send(new AuditoriumText("    Item 3",true));
 		} else if(a instanceof MakeReservation) {
 			_log.debug("User made reservation for event: " + ((MakeReservation)a).getID());
-    		_server.send(new AuditoriumText("This is not implements yet",true));
+    		_session.send(new AuditoriumText("This is not implements yet",true));
 		} else if(a instanceof CancelReservation) {
 			_log.debug("User canceled reservation for event: " + ((CancelReservation)a).getID());
-    		_server.send(new AuditoriumText("This is not implements yet",true));
+    		_session.send(new AuditoriumText("This is not implemented yet",true));
 		} else if(a instanceof EventInfo) {
 			sendEventInfo();
 		}
@@ -348,77 +210,17 @@ public class Chat extends AbstractState {
 		return rc;
 	}
 
-	/**
-	 * @param text
-	 */
-	private void process(String text) throws IOException {
-		if(text.startsWith("//") || text.startsWith("=q")) {
-			// do //msg and //join here.
-			String[] olm;
-			String name=null,msg=null, error=null;
-			QuotedStringTokenizer st=new QuotedStringTokenizer(text.substring(2));
-			String cmd=st.nextToken(" ").toLowerCase();
-			int pos=0;
-			if(cmd.startsWith("msg")) {
-				// Send someone a private msg;
-				if(st.hasMoreTokens())
-					name=st.nextToken(" ");
-				if(st.hasMoreTokens())
-					msg=st.nextToken("\n");
-				if(name != null && msg!= null) {
-					if(_log.isDebugEnabled())
-						_log.debug("sending private message: '" + msg +"' to " + name);
-					if(_server.getIDByName(name)<0)
-						error="User not valid";
-					else if(!_server.isUserOnline(name))
-						error="User not online";
-					else if(!_server.canReceiveOLMs(name)) {
-						error="User cannot receive OLMs";
-					} else {
-						olm=new String[2];
-						olm[0]="Message From:  " + _server.getHandle();
-						olm[1]=msg;
-						_server.sendOLM(name,olm);
-					}
-				}
-			} else
-				_room.say(text);
-			// did we have an error.
-			if(error!=null) {
-				olm=new String[1];
-				olm[0]="Error: " + error;
-				_server.sendOLM(true,olm);
-			}
-		} else {
-			// can room make sense of it?
-			_room.say(text);
-		}
-	}
-
 	public void terminate() {
 		// need to leave current room, and that's it.
 		leaveRoom();
 	}
 
-	/**
-	 * 
-	 */
-	private void sendEventInfo() throws IOException {
-		// TODO Need to modify this to send speaker information
-		sendAuditoriumText();
-	}
-
-	/**
-	 * 
-	 */
-	private void sendRoomList() throws IOException {
-		for(int i=0;i<8&& _roomPos<_rooms.length;i++) {
-			_server.send(new RoomLine(_rooms[_roomPos].getName(),_rooms[_roomPos].getPopulation(),_roomPos+1==_rooms.length));
-			_roomPos++;
-		}
-		if(_roomPos<_rooms.length) {
-			_server.send(new PauseRoomInfo("Press RETURN to continue, F5 to cancel"));
-		}
+	protected void sendRoomInfo(QSeat[] seats) {
+		if(_room.isPublicRoom()) {
+			_session.send(new EnterPublicRoom(_room.getName()));
+		} else
+			_session.send(new EnterPrivateRoom(_room.getName()));
+		showSeats(seats,false);
 	}
 
 	/**
@@ -426,110 +228,31 @@ public class Chat extends AbstractState {
 	 * @param b
 	 */
 	
-	private void enterRoom(String name, boolean b) throws IOException {
+	protected void enterRoom(String name, boolean b) {
 		Room room;
-		SeatInfo user;
-		SeatInfo[] seats;
+		QSeat user;
 		int mySeat=0;
+		QSeat[] seats;
 		
 		_log.debug("Joining room: " + name);
-		room=RoomManager.joinRoom(name,_server.getHandle(),b);
+		room=RoomManager.joinRoom(name,_session.getHandle(),getProfile(_session.getAccountInfo()),b);
 		if(room==null) {
 			_log.debug("Room is full");
 			// send room is full.
-			_server.send(new C2());
+			_session.send(new C2());
 		} else {
 			leaveRoom();
 			// enter new room
 			_room=room;
-			_listener=new QueuedChatEventListener();
-			synchronized(_room) {
-				_log.debug("Adding room listener");
-				_room.addEventListener(_listener);
-				_log.debug("Getting seat information");
-				seats=_room.getSeatInfoList();
-			}
-			showRoom(seats,true);
+			seats=addListener();
+			showSeats(seats,true);
 		}
 	}
 	
-	private void enterAuditorium() throws IOException {
-		SeatInfo user;
-		SeatInfo[] seats;
-		
-		leaveRoom();
-		_log.debug("Joining Auditorium");
-		_room=RoomManager.joinAuditorium(_server.getHandle());
-		_listener=new QueuedChatEventListener();
-		synchronized(_room) {
-			_log.debug("Adding Auditorium listener");
-			_room.addEventListener(_listener);
-			_log.debug("Getting seat information");
-			seats=_room.getSeatInfoList();
-		}
-		_server.send(new EnterPublicRoom(_room.getName()));
-		_log.debug("Sending seat information");
-		for(int i=0,size=seats.length;i<size;i++) {
-			user=seats[i];
-			_server.send(new CL(user.getSeat(),user.getHandle()));
-		}
-		// put us at end.
-		_server.send(new CE(22,_server.getHandle()));
-		_listener.resume();
-		sendAuditoriumText();
-		if(((Auditorium)_room).isAcceptingQuestions())
-			_server.send(new AcceptingQuestions());
-		else
-			_server.send(new RejectingQuestions());
-		
-	}
-
 	/**
 	 * 
 	 */
-	private void leaveRoom() {
-		// remove the listener 
-		_log.debug("Removing room listener");
-		_room.removeEventListener(_listener);
-		// suspend so no more messages will go to the client.
-		_listener.suspend();
-		_log.debug("Leaving current room");
-		// leave this room.
-		_room.leave();
-	}
-
-	/**
-	 * 
-	 */
-	private void showRoom(SeatInfo[] seats, boolean bRoomChange) throws IOException {
-		SeatInfo user;
-		int mySeat=0;
-	
-		if(_room.isPublicRoom())
-			_server.send(new EnterPublicRoom(_room.getName()));
-		else
-			_server.send(new EnterPrivateRoom(_room.getName()));
-		_log.debug("Sending seat information");
-		for(int i=0,size=seats.length;i<size;i++) {
-			user=seats[i];
-			if(!user.getHandle().equals(_server.getHandle()))
-				if(bRoomChange)
-					_server.send(new CL(user.getSeat(),user.getHandle()));
-				else
-					_server.send(new CA(user.getSeat(),user.getHandle()));
-			else
-				mySeat=user.getSeat();
-		}
-		_server.send(new CE(mySeat,_server.getHandle()));
-		_listener.resume();
-		if(!bRoomChange && checkEmail())
-			_server.send(new NewMail());
-	}
-
-	/**
-	 * 
-	 */
-	private void sendAuditoriumText() throws IOException {
+	private void sendAuditoriumText() {
 		_log.debug("Defining Auditorium text");
 		String text=_room.getInfo();
 		TextFormatter tf=new TextFormatter();
@@ -539,8 +262,49 @@ public class Chat extends AbstractState {
     	List l=tf.getList();
     	int size=l.size();
     	for(int i=0;i<size;i++) {
-    		_server.send(new AuditoriumText((String)l.get(i),i+1==size));
+    		_session.send(new AuditoriumText((String)l.get(i),i+1==size));
     	}
+	}
+
+	/**
+	 * 
+	 */
+	private void enterAuditorium() {
+		QSeat user;
+		QSeat[] seats;
+		
+		leaveRoom();
+		_log.debug("Joining Auditorium");
+		_room=RoomManager.joinAuditorium(_session.getHandle(),getProfile(_session.getAccountInfo()));
+		seats=addListener();
+		sendRoomInfo(seats);
+		sendAuditoriumText();
+		if(((Auditorium)_room).isAcceptingQuestions())
+			_session.send(new AcceptingQuestions());
+		else
+			_session.send(new RejectingQuestions());
+		
+	}
+
+	/**
+	 * 
+	 */
+	private void sendRoomList() {
+		for(int i=0;i<8&& _roomPos<_rooms.length;i++) {
+			_session.send(new RoomLine(_rooms[_roomPos].getName(),_rooms[_roomPos].getPopulation(),_roomPos+1==_rooms.length));
+			_roomPos++;
+		}
+		if(_roomPos<_rooms.length) {
+			_session.send(new PauseRoomInfo("Press RETURN to continue, F5 to cancel"));
+		}
+	}
+
+	/**
+	 * 
+	 */
+	private void sendEventInfo() {
+		// TODO Need to modify this to send speaker information
+		sendAuditoriumText();
 	}
 
 }

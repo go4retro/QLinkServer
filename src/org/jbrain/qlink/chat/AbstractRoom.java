@@ -25,28 +25,13 @@ package org.jbrain.qlink.chat;
 
 import java.util.ArrayList;
 
+import org.jbrain.qlink.user.QHandle;
+
 public abstract class AbstractRoom implements Room {
 
-	/**
-	 * 
-	 * @uml.property name="_room"
-	 * @uml.associationEnd multiplicity="(1 1)"
-	 */
-	protected RoomDelegate _room;
-
-	/**
-	 * 
-	 * @uml.property name="_listeners"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.RoomEventListener" multiplicity=
-	 * "(0 -1)"
-	 */
+	protected QRoom _room;
+	protected QSeat _user;
 	private ArrayList _listeners = new ArrayList();
-
-	/**
-	 * 
-	 * @uml.property name="_listener"
-	 * @uml.associationEnd multiplicity="(1 1)"
-	 */
 	private RoomEventListener _listener = new RoomEventListener() {
 		public void userSaid(ChatEvent event) {
 			processEvent(event);
@@ -72,8 +57,9 @@ public abstract class AbstractRoom implements Room {
 	 * @param room
 	 * @param user
 	 */
-	public AbstractRoom(RoomDelegate room) {
+	public AbstractRoom(QRoom room, QSeat user) {
 		_room=room;
+		_user=user;
 		_room.addEventListener(_listener);
 	}
 
@@ -91,14 +77,6 @@ public abstract class AbstractRoom implements Room {
 		return _room.getPopulation();
 	}
 
-	/**
-	 * @param i
-	 * @return
-	 */
-	public synchronized SeatInfo[] getSeatInfoList() {
-		return _room.getSeatInfoList();
-	}
-
 	public synchronized void addEventListener(RoomEventListener listener) {
 		_listeners.add(listener);
 	}
@@ -109,6 +87,43 @@ public abstract class AbstractRoom implements Room {
 		}
 	}
 
+	public ObservedGame observeGame(QHandle handle) {
+		return _room.observeGame(handle);
+	}
+
+	public GameInfo[] getGameInfoList() {
+		return _room.getGameInfoList();
+	}
+
+	public boolean isPublicRoom() {
+		return _room.isPublicRoom();
+	}
+
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.Room#getSeatInfo(java.lang.String)
+	 */
+	public QSeat getSeatInfo(QHandle handle) {
+		return _room.getSeatInfo(handle);
+	}
+
+	public void leave() {
+		_room.removeEventListener(_listener);
+	}
+
+	public abstract void say(String text);
+
+	public abstract void say(String[] text);
+
+	public boolean changeUserName(QHandle handle,ChatProfile profile) {
+		QSeat user=_room.changeUserName(_user,handle,profile);
+		if(user!=null) {
+			_user=user;
+			return true;
+		}
+		return false;
+		
+		
+	}
 	protected synchronized void processJoinEvent(JoinEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			if(event.getType()==JoinEvent.EVENT_JOIN)
@@ -122,7 +137,7 @@ public abstract class AbstractRoom implements Room {
 		}
 	}
 
-	public synchronized void processQuestionStateEvent(QuestionStateEvent event) {
+	protected synchronized void processQuestionStateEvent(QuestionStateEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			if(event.getType()==QuestionStateEvent.ACCEPTING_QUESTIONS)
 				for(int i=0,size=_listeners.size();i<size;i++) {
@@ -144,9 +159,11 @@ public abstract class AbstractRoom implements Room {
 	}
 
 	protected synchronized void processSystemMessageEvent(SystemMessageEvent event) {
-		if(event != null && _listeners.size() > 0) {
-			for(int i=0,size=_listeners.size();i<size;i++) {
-				((RoomEventListener)_listeners.get(i)).systemSent(event);
+		if(event.getName().equals("") || _user.getHandle().toString().equals(event.getName())) {
+			if(event != null && _listeners.size() > 0) {
+				for(int i=0,size=_listeners.size();i<size;i++) {
+						((RoomEventListener)_listeners.get(i)).systemSent(event);
+				}
 			}
 		}
 	}
@@ -160,32 +177,6 @@ public abstract class AbstractRoom implements Room {
 			processSystemMessageEvent((SystemMessageEvent)event);
 		else if(event instanceof QuestionStateEvent) 
 			processQuestionStateEvent((QuestionStateEvent)event);
-	}
-
-	public abstract void say(String[] text);
-	public abstract void say(String text);
-	
-	public void leave() {
-		_room.removeEventListener(_listener);
-	}
-
-	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#getSeatInfo(java.lang.String)
-	 */
-	public SeatInfo getSeatInfo(String handle) {
-		return _room.getSeatInfo(handle);
-	}
-	
-	public boolean isPublicRoom() {
-		return _room.isPublicRoom();
-	}
-	
-	public GameInfo[] getGameInfoList() {
-		return _room.getGameInfoList();
-	}
-	
-	public ObservedGame observeGame(String handle) {
-		return _room.observeGame(handle);
 	}
 	
 }

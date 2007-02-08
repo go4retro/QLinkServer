@@ -35,6 +35,9 @@ import org.apache.log4j.Logger;
 import org.jbrain.qlink.*;
 import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.db.DBUtils;
+import org.jbrain.qlink.user.AccountInfo;
+import org.jbrain.qlink.user.QHandle;
+import org.jbrain.qlink.user.UserManager;
 
 public class SendEmailState extends AbstractState {
 	private static Logger _log=Logger.getLogger(SendEmailState.class);
@@ -46,31 +49,32 @@ public class SendEmailState extends AbstractState {
 	 */
 	private QState _intState;
 
-	private String _sRecipient;
+	private QHandle _recipient;
 	private int _iToID;
 	private StringBuffer _sbText=new StringBuffer();
 	
-	public SendEmailState(QServer server, String recipient) {
-		super(server);
-		_sRecipient=recipient;
+	public SendEmailState(QSession session, QHandle recipient) {
+		super(session);
+		_recipient=recipient;
 }
 	
 	public void activate() throws IOException {
-		_log.debug("User requested to send an email to " + _sRecipient);
+		_log.debug("User requested to send an email to " + _recipient);
 		// we need to send an email...
 		// need to check for valid user
-		_iToID=_server.getIDByName(_sRecipient);
-		if(_iToID>0) {
-			_intState=_server.getState();
+		AccountInfo info=UserManager.getAccount(_recipient);
+		if(info!=null) {
+			_iToID=info.getAccountID();
+			_intState=_session.getState();
 			super.activate();
 			String line1="Date:  ";
 			SimpleDateFormat sdf=new SimpleDateFormat("EEEEEEEE d-MMM-yyyy HH:mm zzz");
 			line1+=sdf.format(new Date());
-			_server.send(new EK(line1,_server.getHandle()));
+			_session.send(new EK(line1,_session.getHandle().toString()));
 			_log.debug("Asking user to compose email");
 		} else {
 			// user does not exist or internal error.
-			_server.send(new E2());
+			_session.send(new E2());
 		}
 
 	}
@@ -87,8 +91,8 @@ public class SendEmailState extends AbstractState {
 			saveEmail(_iToID,_sbText.toString());
 			// get DB connection and save email, and pop up MAIL tag on user if they
 			// are logged in.
-			_server.sendToUser(_sRecipient,new NewMail());
-			_server.setState(_intState);
+			_session.getServer().sendToUser(_recipient,new NewMail());
+			_session.setState(_intState);
 			return true;
 		} else if(a instanceof EmailNextLine) {
 			// save first/next line of email text
@@ -99,8 +103,8 @@ public class SendEmailState extends AbstractState {
 			return true;
 		} else if(a instanceof EmailCanceled) {
 			// email is cancelled
-			_log.debug("Cancelled email to " + _sRecipient);
-			_server.setState(_intState);
+			_log.debug("Cancelled email to " + _recipient);
+			_session.setState(_intState);
 			return true;
 		} else {
 			return _intState.execute(a);
@@ -121,8 +125,8 @@ public class SendEmailState extends AbstractState {
         try {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
-            _log.debug("Saving email to " + _sRecipient);
-            String sql="INSERT INTO email (recipient_id,recipient,sender_id,sender,subject,body,unread,received_date) VALUES (" + id + ",NULL," + _server.getAccountID() + ",NULL,NULL,'" + text.replaceAll("'","\\\\'") + "','Y',now())";
+            _log.debug("Saving email to " + _recipient);
+            String sql="INSERT INTO email (recipient_id,recipient,sender_id,sender,subject,body,unread,received_date) VALUES (" + id + ",NULL," + _session.getAccountID() + ",NULL,NULL,'" + text.replaceAll("'","\\\\'") + "','Y',now())";
             //_log.debug(sql);
             stmt.execute(sql);
             if(stmt.getUpdateCount()>0) {

@@ -18,33 +18,14 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Jul 28, 2005
+	Created on Jul 22, 2005
 	
  */
-package org.jbrain.qlink.dialog;
+package org.jbrain.qlink.cmd.action;
 
-import java.util.*;
-
-import org.jbrain.qlink.cmd.action.*;
-
-
-public class ChatYesNoDialog extends AbstractDialog {
+public class CreateDialog extends AbstractStringAction {
 	
-	public ChatYesNoDialog(String name) {
-		this(name, FORMAT_NONE);
+	public CreateDialog(String name) {
+		super("ZM",name);
 	}
-
-	public ChatYesNoDialog(String name, int format) {
-		super(name,false,format);
-	}
-
-	/**
-	 * @param string
-	 */
-	public Action getResponseAction() {
-		List l=_text.getList();
-		String text=(String)l.get(l.size()-1);
-		return new ChatYesNoRequest(getName(),text);
-	}
-	
 }

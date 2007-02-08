@@ -18,17 +18,21 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Sep 8, 2005
+	Created on Jul 29, 2005
 	
  */
-package org.jbrain.qlink;
-
-import java.util.*;
+package org.jbrain.qlink.cmd.action;
 
 
-public class QUser {
-	private String _sHandle;
-	private ArrayList _alProperties=new ArrayList();
-	private HashMap _hmSettings=new HashMap();
-	private HashMap _hmPermissions=new HashMap();
+public class DialogText extends AbstractDialogAction {
+
+	/**
+	 * @param mnemonic
+	 * @param name
+	 * @param text
+	 */
+	public DialogText(String name, String text) {
+		super("ZT", name, text);
+	}
+
 }

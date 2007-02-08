@@ -32,7 +32,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.apache.log4j.Logger;
-import org.jbrain.qlink.QServer;
+import org.jbrain.qlink.QSession;
 import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.db.DBUtils;
 
@@ -52,8 +52,8 @@ public class PostMessage extends AbstractState {
 	private int _iParentID;
 	private int _iNextID;
 
-	public PostMessage(QServer server, int bid, int pid, int nid) {
-		super(server);
+	public PostMessage(QSession session, int bid, int pid, int nid) {
+		super(session);
 		if(_log.isDebugEnabled())
 			_log.debug("Starting PostMessage with Base ID: " + bid + " and Parent ID: " + pid + " and Next ID: " + nid);
 		_iBaseID=bid;
@@ -62,9 +62,9 @@ public class PostMessage extends AbstractState {
 	}
 	
 	public void activate() throws IOException {
-		_state=_server.getState();
+		_state=_session.getState();
 		super.activate();
-		_server.send(new InitPosting(_server.getHandle()));
+		_session.send(new InitPosting(_session.getHandle().toString()));
 	}
 
 	public void savePosting(String text) throws IOException {
@@ -81,7 +81,7 @@ public class PostMessage extends AbstractState {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Trying to find an open MessageEntry");
-            id=_server.getNextID(_iNextID!=0?_iNextID:_iParentID!=0?_iParentID:_iBaseID,MenuItem.MESSAGE,0x7fffff);
+            id=DBUtils.getNextID(_iNextID!=0?_iNextID:_iParentID!=0?_iParentID:_iBaseID,MenuItem.MESSAGE,0x7fffff);
     		if(id<0) {
     			// error
     			_log.error("Cannot find ID to use for message");
@@ -89,23 +89,23 @@ public class PostMessage extends AbstractState {
     			// need to clean up headings and put in serial number.
     			SimpleDateFormat sdf=new SimpleDateFormat("MM/dd/yyyy");
     			text=text.substring(0,57) + sdf.format(new Date()) + " S# " + id + text.substring(80);
-				sql="insert into messages (reference_id,parent_id,base_id,title,author,date,replies,text) VALUES (" + id + "," + _iParentID + "," + _iBaseID + ",'" + fix(title) + "','" + _server.getHandle() + "',now(),0,'" + fix(text) + "')";
+				sql="insert into messages (reference_id,parent_id,base_id,title,author,date,replies,text) VALUES (" + id + "," + _iParentID + "," + _iBaseID + ",'" + fix(title) + "','" + _session.getHandle() + "',now(),0,'" + fix(text) + "')";
 				_log.debug(sql);
     			stmt.execute(sql);
     			if(stmt.getUpdateCount()==0) {
     				_log.error("Could not insert record into messages");
     			} else {
     				if(_iParentID==0)
-    					_server.send(new PostingSuccess(_iBaseID));
+    					_session.send(new PostingSuccess(_iBaseID));
     				else {
         				sql="update messages set replies=replies+1 where reference_id=" + _iParentID;
         				_log.debug(sql);
             			stmt.execute(sql);
             			if(_iNextID==0)
             				// another response might have snuck in before us, but not a big deal.
-            				_server.send(new PostingSuccess(id));
+            				_session.send(new PostingSuccess(id));
             			else
-            				_server.send(new PostingSuccess(_iNextID));
+            				_session.send(new PostingSuccess(_iNextID));
     				}
     			}
 				
@@ -134,7 +134,7 @@ public class PostMessage extends AbstractState {
 		if(a instanceof AbortPosting) {
 			_log.debug("User aborted posting");
 			rc=true;
-			_server.setState(_state);
+			_session.setState(_state);
 		} else if(a instanceof NextPostingLine) {
 			rc=true;
 			String text=((NextPostingLine)a).getData();
@@ -146,7 +146,7 @@ public class PostMessage extends AbstractState {
 			_log.debug("Message End: " + text);
 			_sbText.append(text.replace((char)0x7f,'\n'));
 			savePosting(_sbText.toString());
-			_server.setState(_state);
+			_session.setState(_state);
 		}
 		if(!rc)
 			rc=super.execute(a);

@@ -25,23 +25,20 @@ package org.jbrain.qlink.chat;
 
 public class NormalRoom extends AbstractRoom{
 
-	private int _seat;
-
 	/**
 	 * @param room
 	 * @param user
 	 */
-	public NormalRoom(RoomDelegate room, int seat) {
-		super(room);
-		_seat=seat;
+	public NormalRoom(QRoom room, QSeat user) {
+		super(room,user);
 	}
 
 	public void say(String text) {
-		_room.say(_seat,text);
+		_room.say(_user,text);
 	}
 	
 	public void leave() {
-		RoomManager.leaveRoom(_room,_seat);
+		RoomManager.leaveRoom(_room,_user);
 		super.leave();
 	}
 
@@ -51,24 +48,26 @@ public class NormalRoom extends AbstractRoom{
 		}
 	}
 
-	
-	protected void processSystemMessageEvent(SystemMessageEvent event) {
-		// is it to us or broadcast?
-		if(event.getRecipientSeat()==_seat || event.getRecipientSeat()==SystemMessageEvent.SEAT_BROADCAST)
-			super.processSystemMessageEvent(event);
+	/**
+	 * @param i
+	 * @return
+	 */
+	public synchronized QSeat[] getSeatInfoList() {
+		return _room.getSeatInfoList(_user);
 	}
 
+	
 	public Game createGame(int id, String name, String type, boolean systemPickOrder) {
-		return new Game(_room,_seat,_room.createGame(id,name,type,systemPickOrder));
+		return new Game(_room,_user,_room.createGame(id,name,type,systemPickOrder));
 	}
 
 	/* (non-Javadoc)
 	 * @see org.jbrain.qlink.chat.Room#getPendingGame()
 	 */
 	public Game getPendingGame() {
-		GameDelegate game=_room.getGame(_seat);
+		GameDelegate game=_room.getGame(_user);
 		if(game!=null)
-			return new Game(_room,_seat,game);
+			return new Game(_room,_user,game);
 		return null;
 	}
 
@@ -77,5 +76,12 @@ public class NormalRoom extends AbstractRoom{
 	 */
 	public String getInfo() {
 		return _room.getInfo();
+	}
+
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.Room#getExtSeatInfoList()
+	 */
+	public QSeat[] getExtSeatInfoList() {
+		return _room.getExtSeatInfoList(_user);
 	}
 }

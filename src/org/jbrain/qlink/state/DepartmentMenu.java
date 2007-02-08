@@ -24,184 +24,42 @@
 package org.jbrain.qlink.state;
 
 import java.io.*;
+import java.lang.reflect.Constructor;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.jbrain.qlink.QServer;
+import org.jbrain.qlink.QSession;
 import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.db.DBUtils;
 import org.jbrain.qlink.io.EscapedInputStream;
 import org.jbrain.qlink.text.TextFormatter;
+import org.jbrain.qlink.user.AccountInfo;
+import org.jbrain.qlink.user.AccountUpdateException;
+import org.jbrain.qlink.user.UserManager;
 
-class MenuEntry {
-
-	private int _iID;
-	private String _sTitle;
-	private int _iType;
-	private int _iCost;
-
-	/**
-	 * @param refid
-	 * @param title
-	 * @param type
-	 * @param cost
-	 */
-	public MenuEntry(int id, String title, int type, int cost) {
-		_iID=id;
-		_sTitle=title;
-		_iType=type;
-		_iCost=cost;
-	}
-
-	/**
-	 * @return
-	 */
-	public int getType() {
-		return _iType;
-	}
-
-	/**
-	 * @return
-	 */
-	public String getTitle() {
-		return _sTitle;
-	}
-
-	/**
-	 * @return
-	 */
-	public int getID() {
-		return _iID;
-	}
-
-	/**
-	 * @return
-	 */
-	public int getCost() {
-		return _iCost;
-	}
-	
-}
-
-class MessageEntry {
-	private String _sTitle;
-	private Date _date;
-	private int _iReplies=0;
-	private String _sAuthor;
-	private int _iID;
-	private int _iReplyID=0;
-
-	public MessageEntry(int id, String title, String author, Date date) {
-		_iID=id;
-		_sTitle=title;
-		_date=date;
-		_sAuthor=author;
-	}
-
-	/**
-	 * @return
-	 */
-	public String getTitle() {
-		return _sTitle;
-	}
-
-	/**
-	 * @return
-	 */
-	public String getAuthor() {
-		return _sAuthor;
-	}
-
-	/**
-	 * @return
-	 */
-	public int getID() {
-		return _iID;
-	}
-
-	/**
-	 * @return
-	 */
-	public Date getDate() {
-		return _date;
-	}
-
-	/**
-	 * @param int1
-	 */
-	public void addReplyID(int id) {
-		if(_iReplyID==0)
-			_iReplyID=id;
-		_iReplies++;
-		
-	}
-
-	/**
-	 * @return
-	 */
-	public int getReplies() {
-		return _iReplies;
-	}
-}
-
-public class DepartmentMenu extends AbstractState {
+public class DepartmentMenu extends AbstractMenuState {
 	private static Logger _log=Logger.getLogger(DepartmentMenu.class);
-	private List _lText;
-
-	/**
-	 * 
-	 * @uml.property name="_iLines"
-	 * @uml.associationEnd elementType="java.lang.String" multiplicity="(0 -1)"
-	 */
-	private int _iLines;
-
-	/**
-	 * 
-	 * @uml.property name="_alMessages"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.state.MessageEntry" multiplicity=
-	 * "(0 -1)"
-	 */
-	private ArrayList _alMessages = new ArrayList();
-
-	/**
-	 * 
-	 * @uml.property name="_hmMessages"
-	 * @uml.associationEnd qualifier="new:java.lang.Integer org.jbrain.qlink.state.MessageEntry"
-	 * multiplicity="(0 1)"
-	 */
-	private HashMap _hmMessages = new HashMap();
-
-	/**
-	 * 
-	 * @uml.property name="_alMenu"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.state.MenuEntry" multiplicity=
-	 * "(0 -1)"
-	 */
-	private ArrayList _alMenu = new ArrayList();
-
-	private int _iCurrMenuID;
-	private int _iCurrMessageID;
-	private int _iNextMessageID;
-	private int _iCurrParentID;
 	private InputStream _is;
-	private static final int XMIT_BLOCKS_MAX=16;
+	
+	private List _lRefreshAccounts=null;
+	private AccountInfo _refreshAccount=null;
 	 
-	public DepartmentMenu(QServer server) {
-		super(server);
-		server.enableOLMs(true);
+	public DepartmentMenu(QSession session) {
+		super(session);
+		session.enableOLMs(true);
 	}
 	
 	public void activate() throws IOException {
-		_server.send(new MC());
+		_session.send(new MC());
 		super.activate();
+		checkAccountRefresh();
 }
 	/* (non-Javadoc)
 	 * @see org.jbrain.qlink.state.QState#execute(org.jbrain.qlink.cmd.Command)
@@ -211,37 +69,48 @@ public class DepartmentMenu extends AbstractState {
 		QState state;
 		
 		if(a instanceof SelectMenuItem) {
+			rc=true;
 			int id=((SelectMenuItem)a).getID();
 			selectItem(id);
+			// wait until after the list is sent.
+			if(_lRefreshAccounts!=null) {
+	    		_session.send(new SendSYSOLM("System: Refreshing user name list"));
+	    		refreshAccount();
+			}
 		} else if(a instanceof ListSearch) {
+			rc=true;
 			int id=((ListSearch)a).getID();
 			int index=((ListSearch)a).getIndex();
 			_log.debug("Received Search request with ID=" + id + " and index=" + index);
 			//int bid=((MenuEntry)_alMenu.get(((ListSearch)a).getIndex())).getID();
 			String q=((ListSearch)a).getQuery().replaceAll("'","\\\\'");
 			selectMessageList(id,"AND (title LIKE '%" + q + "%' OR text LIKE '%" + q + "%')");
-			_iLines=0;
+			clearLineCount();
 			sendMessageList();
 		} else if(a instanceof AbortDownload) {
+			rc=true;
 			_log.debug("Client aborted download, closing InputStream");
 			if(_is!=null)
 				_is.close();
 		} else if(a instanceof DownloadFile) {
-			openFile(((DownloadFile)a).getID());
+			rc=true;
+			openStream(((DownloadFile)a).getID());
 		} else if(a instanceof StartDownload) {
+			rc=true;
 			_log.debug("Client requested download data");
 			byte[] b=new byte[116];
 			int len=-1;
 			for(int i=0;i<XMIT_BLOCKS_MAX && (len=_is.read(b))>0;i++) {
-				_server.send(new TransmitData(b,len,i==XMIT_BLOCKS_MAX-1?TransmitData.SAVE:TransmitData.SEND));
+				_session.send(new TransmitData(b,len,i==XMIT_BLOCKS_MAX-1?TransmitData.SAVE:TransmitData.SEND));
 			}
 			if(len<0) {
 				_log.debug("Download completed, closing stream and sending EOF to client.");
-				_server.send(new TransmitData(b,0,TransmitData.END));
+				_session.send(new TransmitData(b,0,TransmitData.END));
 				_is.close();
 			}
 			
 		} else if(a instanceof SelectDateReply) {
+			rc=true;
 			int id=((SelectDateReply)a).getID();
 			Date date=((SelectDateReply)a).getDate();
 			_log.debug("User requested next reply after " + date);
@@ -249,30 +118,17 @@ public class DepartmentMenu extends AbstractState {
 			id=selectDatedReply(id,date);
 			displayMessage(id);
 		} else if(a instanceof SelectList) {
+			rc=true;
 			int id=((SelectList)a).getID();
 			selectMessageList(id,"");
-			_iLines=0;
+			clearLineCount();
 			sendMessageList();
 		} else if(a instanceof GetMenuInfo) {
-				int id=((GetMenuInfo)a).getID();
-				selectItem(id);
-		} else if(a instanceof EnterMessageBoard) {
-			// seems strange that we get this and that we need to send ANOTHER MC back.
-			_server.send(new MC());
-			if(checkEmail())
-				_server.send(new NewMail());
 			rc=true;
-		} else if(a instanceof MR) {
-			rc=true;
-			state=new Chat(_server);
-			state.activate();
-		} else if(a instanceof SelectMoreList) {
-			sendMessageList();
-		} else if(a instanceof AbortSelectList) {
-			clearMessageList();
-		} else if(a instanceof FileTextAck) {
-			sendPackedLines();
+			int id=((GetMenuInfo)a).getID();
+			selectItem(id);
 		} else if(a instanceof RequestItemPost) {
+			rc=true;
 			int id=((RequestItemPost)a).getID();
 			int index=((RequestItemPost)a).getIndex();
 			_log.debug("Received Post request with ID=" + id + " and index=" + index);
@@ -290,8 +146,10 @@ public class DepartmentMenu extends AbstractState {
 				 pid=0;
 			}
 			bid=((MenuEntry)_alMenu.get(((RequestItemPost)a).getIndex())).getID();
-			state=new PostMessage(_server,bid,pid,_iNextMessageID);
+			state=new PostMessage(_session,bid,pid,_iNextMessageID);
 			state.activate();
+		} else if(a instanceof ResumeService) {
+			refreshAccount();
 		}
 		if(!rc)
 			rc=super.execute(a);
@@ -301,11 +159,11 @@ public class DepartmentMenu extends AbstractState {
 	/**
 	 * @param id
 	 */
-	private void openFile(int id) throws IOException {
+	private void openStream(int id) throws IOException {
         Connection conn=null;
         Statement stmt = null;
         ResultSet rs = null;
-        
+
         try {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
@@ -318,7 +176,7 @@ public class DepartmentMenu extends AbstractState {
 	        	// get binary stream
 	        	_is=new EscapedInputStream(rs.getBinaryStream("data"));
 	        	DBUtils.close(rs);
-	        	_server.send(new InitDownload(mid,type));
+	        	_session.send(new InitDownload(mid,type));
 	        } else {
     			_log.error("File not found.");
 	        	// TODO What should we do if we do not find anything?
@@ -389,45 +247,44 @@ public class DepartmentMenu extends AbstractState {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
             _log.debug("Selecting Item: " + id);
-	        rs=stmt.executeQuery("SELECT entry_type, cost FROM entry_types WHERE reference_id=" + id);
+	        rs=stmt.executeQuery("SELECT entry_type, cost, special FROM entry_types WHERE reference_id=" + id);
 	        if(rs.next()) {
 	        	int type=rs.getInt("entry_type");
 	        	String cost=rs.getString("cost");
-	        	switch(type) {
-	        		case MenuItem.MENU:
-	        			_log.debug("Item is a menu, sending new menu");
-	        			selectMenu(id);
-	        			sendMenu(id);
-	        			break;
-	        		case MenuItem.MESSAGE:
-	        			_log.debug("Item is a message, display it");
-	        			displayMessage(id);
-	        			break;
-	        		case MenuItem.TEXT:
-	        		case MenuItem.MULTI_TEXT:
-	        			_log.debug("Item is a file, display it");
-	        			displayDBTextFile(id);
-		        		break;
-		        	case MenuItem.DOWNLOAD:
-		        		_log.debug("Item is a download, display text");
-		        		displayFileInfo(id);
-		        		break;
-	        		case MenuItem.UNKNOWN_83:
-	        		case MenuItem.UNKNOWN_84:
-	        		case MenuItem.UNKNOWN_89:
-	        		case MenuItem.UNKNOWN_8C:
-	        			_log.debug("Item is a dialog, display it");
-	        			QState state=new JimState(_server);
-	        			state.activate();
-	        		
-		        		break;
-	        		case MenuItem.GATEWAY:
-	        			_log.debug("Item is a gateway, connect to it");
-	        			connectToGateway(id);
-		        		break;
-		        	default:
-		    			_log.error("Item has unknown type, what should we do?");
-		        		break;
+	        	if(rs.getString("special").equalsIgnoreCase("Y") && setHandler(id)) {
+	        		return;
+	        	} else { 
+		        	switch(type) {
+		        		case MenuItem.MENU:
+		        			_log.debug("Item is a menu, sending new menu");
+		        			selectMenu(id);
+		        			sendMenu(id);
+		        			break;
+		        		case MenuItem.MESSAGE:
+		        			_log.debug("Item is a message, display it");
+		        			displayMessage(id);
+		        			break;
+		        		case MenuItem.TEXT:
+		        		case MenuItem.MULTI_TEXT:
+		        			_log.debug("Item is a file, display it");
+		        			displayDBTextFile(id);
+			        		break;
+			        	case MenuItem.DOWNLOAD:
+			        		_log.debug("Item is a download, display text");
+			        		displayFileInfo(id);
+			        		break;
+		        		case MenuItem.GATEWAY:
+		        			_log.debug("Item is a gateway, connect to it");
+		        			connectToGateway(id);
+			        		break;
+			        	case MenuItem.CHAT:
+		        			_log.debug("Item is a chat room, enter it");
+			        		enterChat(id);
+			        		break;
+			        	default:
+			    			_log.error("Item has unknown type (" + type + "), what should we do?");
+			        		break;
+		        	}
 	        	}
 	        } else {
     			_log.error("Item has no reference, what should we do?");
@@ -443,12 +300,45 @@ public class DepartmentMenu extends AbstractState {
 	}
 	
 	
-	
+	/**
+	 * @param id
+	 */
+	private void enterChat(int id) throws IOException {
+        Connection conn=null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        String room;
+        int port;
+        
+        try {
+        	conn=DBUtils.getConnection();
+            stmt = conn.createStatement();
+            _log.debug("Get room information for  Chat ID: " + id);
+	        rs=stmt.executeQuery("SELECT room from vendor_rooms where reference_id=" + id);
+	        if(rs.next()) {
+	        	room=rs.getString("room");
+	    		QState state=new SimpleChat(_session,room);
+	    		state.activate();
+	        } else {
+        		_log.debug("Vendor room record does not exist.");
+        		// TODO need to handle this.
+	        }
+        } catch (SQLException e) {
+        	_log.error("SQL Exception",e);
+        	// TODO do something better than this.
+        	_session.terminate();
+        } finally {
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
+        }
+	}
+
 	/**
 	 * @param id
 	 * @throws IOException
 	 */
-	private void connectToGateway(int id) throws IOException {
+	protected void connectToGateway(int id) throws IOException {
         Connection conn=null;
         Statement stmt = null;
         ResultSet rs = null;
@@ -465,26 +355,73 @@ public class DepartmentMenu extends AbstractState {
 	        	port=rs.getInt("port");
 	        	if(address==null || address.equals("")) {
 	        		_log.debug("Gateway address is null or empty.");
-	    			_server.send(new GatewayExit("Destination invalid"));
+	    			_session.send(new GatewayExit("Destination invalid"));
 	        	} else {
 	        		if (port==0)
 	        			port=23;
-					QState state=new GatewayState(_server,address,port);
+					QState state=new GatewayState(_session,address,port);
 					state.activate();
 	        	}
 	        } else {
         		_log.debug("Gateway record does not exist.");
-    			_server.send(new GatewayExit("Destination invalid"));
+    			_session.send(new GatewayExit("Destination invalid"));
 	        }
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);
-			_server.send(new GatewayExit("Server error"));
+			_session.send(new GatewayExit("Server error"));
         } finally {
         	DBUtils.close(rs);
         	DBUtils.close(stmt);
         	DBUtils.close(conn);
         }
 		
+	}
+
+	
+	/**
+	 * @param id
+	 */
+	private boolean setHandler(int id) throws IOException {
+        Connection conn=null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        QState state=null;
+        
+        try {
+        	conn=DBUtils.getConnection();
+            stmt = conn.createStatement();
+            _log.debug("Selecting Special item: " + id);
+	        rs=stmt.executeQuery("SELECT handler FROM reference_handlers WHERE reference_id=" + id);
+    		if(rs.next()) {
+    			String clazz=rs.getString("handler");
+    			_log.debug("Found Handler: " + clazz);
+    			try {
+					Class c=Class.forName(clazz);
+					Class signature[] = new Class[1];
+					signature[0]=QSession.class;
+					Constructor cons=c.getConstructor(signature);
+					Object[] parms=new Object[1];
+					parms[0]=_session;
+					state=(QState)cons.newInstance(parms);
+				} catch (Exception e) {
+					_log.error("Cannot set code handler for id: " + id, e);
+				}
+    		}
+    		if(state!=null) {
+    			state.activate();
+    			return true;
+	        } else {
+    			_log.error("handler is null");
+	        }
+        } catch (SQLException e) {
+        	_log.error("SQL Exception",e);
+        	// big time error, send back error string and close connection
+        } finally {
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
+        }
+        return false;
 	}
 
 	/**
@@ -505,11 +442,11 @@ public class DepartmentMenu extends AbstractState {
 	            tf.add("      " + rs.getString("name"));
 	            tf.add("     " + rs.getString("filetype"));
 	        	String data=rs.getString("description");
-	            _server.send(new InitDataSend(id,0,0));
+	            _session.send(new InitDataSend(id,0,0));
 	            tf.add(data);
 	            tf.add("\n <<   PRESS F7 FOR DOWNLOAD MENU    >> ");
 	            _lText=tf.getList();
-	            _iLines=0;
+				clearLineCount();
 	            sendSingleLines();
 	        } else {
     			_log.error("Item has no reference, what should we do?");
@@ -522,31 +459,6 @@ public class DepartmentMenu extends AbstractState {
         	DBUtils.close(stmt);
         	DBUtils.close(conn);
         }
-	}
-
-	/**
-	 * 
-	 */
-	private void sendMenu(int id) throws IOException {
-		int i=0,size=_alMenu.size();
-		MenuEntry m;
-		
-		while(i<size) {
-			m=(MenuEntry)_alMenu.get(i++);
-		   	if(m.getType()==MenuItem.MESSAGE_BASE) 
-		    		_server.send(new MenuItem(m.getID(),m.getTitle(),m.getID(),i== size && id>=10));
-		    	else 
-		    		_server.send(new MenuItem(m.getID(),m.getTitle(),m.getType(),m.getCost(),i==size && id>=10));
-		}
-		if(size==0) {
-			_log.error("Menu ID invalid.");
-			_server.send(new MenuItem(0,"Menu not available at this time.",MenuItem.HEADING,MenuItem.COST_NO_CHARGE,false));
-		}
-		if(id<10 || size==0) {
-			_server.send(new MenuItem(422,"    Q-Link Post Office (+)",MenuItem.POST_OFFICE,MenuItem.COST_PREMIUM,false));
-			_server.send(new MenuItem(0,"    Move to Another Q-Link Department",MenuItem.AREA_MENU,MenuItem.COST_NO_CHARGE,true));
-		}
-		
 	}
 
 	/**
@@ -589,10 +501,10 @@ public class DepartmentMenu extends AbstractState {
         	}
         	DBUtils.close(rs);
 	        // init data area
-            _server.send(new InitDataSend(id,0,0,_iNextMessageID,0));
+            _session.send(new InitDataSend(id,0,0,_iNextMessageID,0));
             tf.add(text);
             _lText=tf.getList();
-            _iLines=0;
+			clearLineCount();
             sendSingleLines();
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);
@@ -631,7 +543,7 @@ public class DepartmentMenu extends AbstractState {
         	}
         	DBUtils.close(rs);
 	        // init data area
-            _server.send(new InitDataSend(id,prev,next));
+            _session.send(new InitDataSend(id,prev,next));
             TextFormatter tf=new TextFormatter(TextFormatter.FORMAT_NONE,39);
             tf.add(data);
             if(next!=0)
@@ -639,11 +551,12 @@ public class DepartmentMenu extends AbstractState {
             else
             	tf.add("\n            <PRESS F5 FOR MENU>");
             _lText=tf.getList();
-            _iLines=0;
+			clearLineCount();
             sendSingleLines();
         } catch (SQLException e) {
         	_log.error("SQL Exception",e);
         	// big time error, send back error string and close connection
+        	_session.terminate();
         } finally {
         	DBUtils.close(rs);
         	DBUtils.close(stmt);
@@ -655,45 +568,6 @@ public class DepartmentMenu extends AbstractState {
 	 * @throws IOException
 	 * 
 	 */
-	private void sendSingleLines() throws IOException {
-		int i=0;
-        while(i++<18 && _iLines+1<_lText.size()) {
-    		_server.send(new FileText((String)_lText.get(_iLines++) + (char)0x7f,false));
-        }
-        if(_iLines+1<_lText.size()) {
-    		_server.send(new FileTextPing((String)_lText.get(_iLines++) + (char)0x7f));
-        } else {
-    		_server.send(new FileText((String)_lText.get(_iLines++) + (char)0x7f,true));
-        }
-	}
-
-	private void sendPackedLines() throws IOException {
-		int i=0;
-		String line;
-		StringBuffer sb=new StringBuffer();
-		// we want to send up to 19 lines...
-        while(i++<18 && _iLines+1<_lText.size()) {
-        	line=(String)_lText.get(_iLines++);
-        	if(sb.length() + 1 + line.length() > 117) {
-        		// send packet.
-        		_server.send(new FileText(sb.toString(),false));
-        		sb.setLength(0);
-        	}
-        	// add line
-    		sb.append(line);
-    		sb.append((char)0x7f);
-        }
-        // we are guaranteed to have one more line to send, but may have data in buffer.
-        if(sb.length()>0) {
-        	// we have stored data, go ahead and send it.  We will only be sending 18 lines in this case.
-    		_server.send(new FileTextPing(sb.toString()));
-        } else if(_iLines+1<_lText.size()) {
-    		_server.send(new FileTextPing((String)_lText.get(_iLines++) + (char)0x7f));
-        } else {
-    		_server.send(new FileText((String)_lText.get(_iLines++) + (char)0x7f,true));
-        }
-	}
-
 	private void selectMenu(int id) throws IOException {
 		boolean rc=false;
         Connection conn=null;
@@ -795,41 +669,47 @@ public class DepartmentMenu extends AbstractState {
         }
 	}
 
-	private void sendMessageList() throws IOException {
-		// we send these backwards from the List.
-		int i=0;
-		MessageEntry m;
-		PostingItem line;
-		
-		int size=_alMessages.size();
-		if(size==0)
-			_server.send(new PostingItem("No News (is good news)", PostingItem.LAST));
-		else {
-			while(i<4 && _iLines<size-1) {
-				i++;
-				_iLines++;
-				m=(MessageEntry)_alMessages.get(size-_iLines);
-				_server.send(new PostingItem(m.getID(),m.getTitle(),m.getAuthor(),m.getReplies(),m.getDate(),PostingItem.NEXT));
-			}
-			_iLines++;
-			m=(MessageEntry)_alMessages.get(size-_iLines);
-			if(_iLines==size) {
-				// after the ++ above, we should be at end.
-				_server.send(new PostingItem(m.getID(),m.getTitle(),m.getAuthor(),m.getReplies(),m.getDate(),PostingItem.LAST));
-				clearMessageList();
-			} else {
-				_server.send(new PostingItem(m.getID(),m.getTitle(),m.getAuthor(),m.getReplies(),m.getDate(),PostingItem.NEXT));
-				_server.send(new PostingItem("Use RETURN to go on, F5 to cancel.",PostingItem.PAUSE));
+	/**
+	 * 
+	 */
+	private void refreshAccount() throws IOException {
+		if(_refreshAccount!=null) {
+			try {
+				//update the account just refreshed.
+				_refreshAccount.setRefresh(false);
+				_refreshAccount=null;
+			} catch (AccountUpdateException e) {
+				_log.error("Update Exception",e);
+				_session.terminate();
 			}
 		}
-		
+		if(_lRefreshAccounts!=null && _lRefreshAccounts.size()!=0) {
+			DecimalFormat format=new DecimalFormat("0000000000");
+			_refreshAccount=(AccountInfo)_lRefreshAccounts.remove(0);
+			String account;
+			_log.debug("Refreshing user name: " + _refreshAccount.getHandle());
+			account=format.format(_refreshAccount.getAccountID());
+			_session.send(new AddSubAccount(account,_refreshAccount.getHandle().toString()));
+			if(_lRefreshAccounts.size()==0)
+				_lRefreshAccounts=null;
+		}
 	}
 
 	/**
 	 * 
 	 */
-	private void clearMessageList() {
-		_alMessages.clear();
+	private void checkAccountRefresh() throws IOException {
+		AccountInfo info;
+		
+		_lRefreshAccounts=UserManager.getSubAccountsforUser(_session.getUserID());
+		for(int i=_lRefreshAccounts.size()-1;i>-1;i--) {
+			info=(AccountInfo)_lRefreshAccounts.get(i);
+			if(!info.needsRefresh()) {
+				_lRefreshAccounts.remove(i);
+			}
+		}
+		if(_lRefreshAccounts.size()==0) {
+			_lRefreshAccounts=null;
+		}
 	}
-
 }

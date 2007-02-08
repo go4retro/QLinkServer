@@ -31,12 +31,12 @@ import org.jbrain.qlink.text.TextFormatter;
 
 public class EntryDialog extends AbstractDialog {
 	
-	public EntryDialog(String name, boolean bLogin) {
-		super(name,bLogin);
+	public EntryDialog(String name, int dialogType) {
+		super(name,dialogType);
 	}
 
-	public EntryDialog(String name, boolean bLogin, int format) {
-		super(name,bLogin,format);
+	public EntryDialog(String name, int dialogType, int format) {
+		super(name,dialogType,format);
 	}
 
 	/**
@@ -45,38 +45,26 @@ public class EntryDialog extends AbstractDialog {
 	public Action getResponseAction() {
 		List l=_text.getList();
 		String text=(String)l.get(l.size()-1);
-		return new TextRequest(getName(),text);
+		switch(getDialogType()) {
+			case TYPE_LOGIN:
+				return new LoginDialogTextRequest(getName(),text);
+			default:
+				return new MenuDialogTextRequest(getName(),text);
+		}
 	}
 
 	public Action[] getErrorResponse(String string) {
-		TextFormatter tf=new TextFormatter(TextFormatter.FORMAT_CENTERED);
+		TextFormatter tf=new TextFormatter();
 		tf.add(string);
+		tf.add("\n<PRESS F5 TO TRY AGAIN>");
 		List l=tf.getList();
 		int size=l.size();
-		Action[] actions=new Action[size+1];
+		Action[] actions=new Action[size];
 		for(int i=0;i<size;i++) {
-			actions[i]=new DialogErrorText(getName(),(String)l.get(i),false);
+			actions[i]=new DialogErrorText(getName(),(String)l.get(i),i+1==size);
 		}
-		actions[size]=new DialogErrorText(getName(),"\n<PRESS F5 TO TRY AGAIN>",true);
 		return actions;
 		
 	}
 
-	/**
-	 * @param string
-	 * @return
-	 */
-	public Action[] getSuccessResponse(String string) {
-		TextFormatter tf=new TextFormatter(TextFormatter.FORMAT_CENTERED);
-		tf.add(string);
-		List l=tf.getList();
-		int size=l.size();
-		Action[] actions=new Action[size+1];
-		for(int i=0;i<size;i++) {
-			actions[i]=new LoginDialogText(getName(),(String)l.get(i));
-		}
-		actions[size]=new PauseRequest(getName(),"\n<PRESS F5 TO CONTINUE>");
-		return actions;
-	}
-	
 }

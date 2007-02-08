@@ -27,6 +27,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.Vector;
 
 import org.apache.log4j.Logger;
 import org.jbrain.qlink.cmd.*;
@@ -42,22 +43,8 @@ public class QConnection extends Thread {
 	private static TimerTask _pingTimer=null;;
 	public static byte FRAME_END=0x0d;
 
-	/**
-	 * 
-	 * @uml.property name="_listeners"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.connection.ConnEventListener"
-	 * multiplicity="(0 -1)"
-	 */
-	private ArrayList _listeners = new ArrayList();
-
-	/**
-	 * 
-	 * @uml.property name="_alSendQueue"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.cmd.action.Action" multiplicity=
-	 * "(0 -1)"
-	 */
+	private Vector _listeners = new Vector();
 	private ArrayList _alSendQueue = new ArrayList();
-
 	private int _iConsecutiveErrors=0;
 	private int _iQLen;
 	private byte _inSequence;
@@ -66,13 +53,6 @@ public class QConnection extends Thread {
 	private InputStream _is;
 	private OutputStream _os;
 	private static final int QSIZE = 16;
-
-	/**
-	 * 
-	 * @uml.property name="_keepAliveTask"
-	 * @uml.associationEnd inverse="this$0:org.jbrain.qlink.connection.QConnection$KeepAliveTask"
-	 * multiplicity="(1 1)"
-	 */
 	private KeepAliveTask _keepAliveTask;
 	private SuspendWatchdog _suspendWatchdog;
 
@@ -161,11 +141,14 @@ public class QConnection extends Thread {
 									_keepAliveTask.reset();	
 								_log.debug("Received " + cmd.getName());
 								if(cmd instanceof Reset) {
+									if(((Reset)cmd).isSuperQ()) {
+										_log.debug("SuperQ/Music Connection special RESET received");
+									}
 									_log.debug("Issuing RESET Ack command");
 									init();
+									this.write(new ResetAck());
 									_iVersion=((Reset)cmd).getVersion();
 									_iRelease=((Reset)cmd).getRelease();
-									this.write(new ResetAck());
 								} else {
 									// get the sequence number of the received packet.
 									inSeq=cmd.getRecvSequence();
@@ -406,7 +389,7 @@ public class QConnection extends Thread {
 	
 	private static String _hex="0123456789ABCDEF";
 	private boolean _bSuspend;
-	private void trace(String prefix, byte[] data, int i, int length) {
+	public static void trace(String prefix, byte[] data, int i, int length) {
 		StringBuffer sb=new StringBuffer(length*3+prefix.length());
 		sb.append(prefix);
 		byte d;
