@@ -35,14 +35,59 @@ public class GameDelegate {
 	private String _sName;
 	private String _sType;
 	private boolean _bSystemPickOrder;
+
+	/**
+	 * 
+	 * @uml.property name="_room"
+	 * @uml.associationEnd inverse="_userGame:org.jbrain.qlink.chat.RoomDelegate" multiplicity=
+	 * "(1 1)"
+	 */
 	private RoomDelegate _room;
-	private ArrayList _alPlayers=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_alPlayers"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.SeatInfo" multiplicity="(0
+	 * -1)"
+	 */
+	private ArrayList _alPlayers = new ArrayList();
+
 	private byte[] _seats;
-	private ArrayList _listeners=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_listeners"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.GameEventListener" multiplicity=
+	 * "(0 -1)"
+	 */
+	private ArrayList _listeners = new ArrayList();
+
 	private int _iID;
-	private ArrayList _alDeclineList=new ArrayList();
-	private ArrayList _alAcceptList=new ArrayList();
-	private ArrayList _alAbstainList=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_alDeclineList"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.SeatInfo" multiplicity="(0
+	 * -1)"
+	 */
+	private ArrayList _alDeclineList = new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_alAcceptList"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.SeatInfo" multiplicity="(0
+	 * -1)"
+	 */
+	private ArrayList _alAcceptList = new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_alAbstainList"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.SeatInfo" multiplicity="(0
+	 * -1)"
+	 */
+	private ArrayList _alAbstainList = new ArrayList();
+
 	private boolean _bActive=true;
 
 	/**

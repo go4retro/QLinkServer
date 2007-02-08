@@ -18,20 +18,14 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	@author Jim Brain
-	Created on Jul 22, 2005
+	Created on Aug 12, 2005
 	
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.Command;
+public class PartnerSearchMessage extends AbstractStringAction {
 
-
-public interface Action extends Command {
-
-	/**
-	 * 
-	 * @uml.property name="action" multiplicity="(0 1)"
-	 */
-	public String getAction();
-
+	public PartnerSearchMessage(String text) {
+		super("PK",text);
+	}
 }

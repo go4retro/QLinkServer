@@ -23,15 +23,13 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.Command;
+import org.jbrain.qlink.cmd.CRCException;
 
+public class ExcludeMe extends AbstractAction {
 
-public interface Action extends Command {
-
-	/**
-	 * 
-	 * @uml.property name="action" multiplicity="(0 1)"
-	 */
-	public String getAction();
-
+	public static final String MNEMONIC="PU";
+	
+	public ExcludeMe(byte[] b, int start, int len) throws CRCException {
+		super(b,start,len);
+	}
 }

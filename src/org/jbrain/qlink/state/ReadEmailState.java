@@ -38,7 +38,14 @@ import org.jbrain.qlink.text.TextFormatter;
 
 public class ReadEmailState extends AbstractState {
 	private static Logger _log=Logger.getLogger(ReadEmailState.class);
+
+	/**
+	 * 
+	 * @uml.property name="_intState"
+	 * @uml.associationEnd multiplicity="(0 1)"
+	 */
 	private QState _intState;
+
 	
 	public ReadEmailState(QServer server) {
 		super(server);

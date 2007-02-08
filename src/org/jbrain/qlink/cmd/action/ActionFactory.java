@@ -241,6 +241,27 @@ public class ActionFactory {
 		if(action.equals(DeclineRestart.MNEMONIC)) {
 			return new DeclineRestart(b,start,len);
 		}
+		if(action.equals(FindPartners.MNEMONIC)) {
+			return new FindPartners(b,start,len);
+		}
+		if(action.equals(IncludeMe.MNEMONIC)) {
+			return new IncludeMe(b,start,len);
+		}
+		if(action.equals(ExcludeMe.MNEMONIC)) {
+			return new ExcludeMe(b,start,len);
+		}
+		if(action.equals(CancelPartnerSearch.MNEMONIC)) {
+			return new CancelPartnerSearch(b,start,len);
+		}
+		if(action.equals(PartnerSearchStatusRequest.MNEMONIC)) {
+			return new PartnerSearchStatusRequest(b,start,len);
+		}
+		if(action.equals(SelectPartner.MNEMONIC)) {
+			return new SelectPartner(b,start,len);
+		}
+		if(action.equals(FindMorePartners.MNEMONIC)) {
+			return new FindMorePartners(b,start,len);
+		}
 		
 		return new UnknownAction(b,start,len);
 	}

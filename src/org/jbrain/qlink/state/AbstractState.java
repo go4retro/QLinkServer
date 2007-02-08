@@ -38,6 +38,12 @@ import org.jbrain.qlink.db.DBUtils;
 
 public abstract class AbstractState implements QState {
 	private static Logger _log=Logger.getLogger(AbstractState.class);
+
+	/**
+	 * 
+	 * @uml.property name="_server"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	//public static final int PHASE_INITIAL=1;
 	protected QServer _server;
 

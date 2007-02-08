@@ -42,31 +42,62 @@ import org.jbrain.qlink.state.*;
 
 public class QServer {
 	private static Logger _log=Logger.getLogger(QServer.class);
+
+	/**
+	 * 
+	 * @uml.property name="_link"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	private QConnection _link;
+
+	/**
+	 * 
+	 * @uml.property name="_state"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	private QState _state;
+
 	private String _sHandle=null;
 	private static Hashtable _htServers=new Hashtable();
 	private Connection _conn=null;
 	private int _iID;
 	private Date _startTime;
-	private Hashtable _htOLMTable=new Hashtable();
-	private int _iOLMID=0;	
-	
-	private ConnEventListener _linklistener=new ConnEventListener() {
+
+	/**
+	 * 
+	 * @uml.property name="_htOLMTable"
+	 * @uml.associationEnd qualifier="id:java.lang.String java.lang.String" multiplicity=
+	 * "(0 1)"
+	 */
+	private Hashtable _htOLMTable = new Hashtable();
+
+	private int _iOLMID=0;
+
+	/**
+	 * 
+	 * @uml.property name="_linklistener"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
+	private ConnEventListener _linklistener = new ConnEventListener() {
 		public void actionOccurred(ActionEvent event) {
 			try {
-				_log.debug(_state.getName() + ": Executing " + event.getAction().getName());
+				_log.debug(_state.getName()
+					+ ": Executing "
+					+ event.getAction().getName());
 				_state.execute(event.getAction());
 			} catch (IOException e) {
 				// this means the connection died, so close down the server.
-				_log.error("Link error detected, shutting down instance",e);
+				_log.error("Link error detected, shutting down instance", e);
 				terminate();
 			} catch (RuntimeException e) {
-				_log.error("Runtime error encountered, shutting down instance",e);
+				_log.error(
+					"Runtime error encountered, shutting down instance",
+					e);
 				terminate();
 			}
 		}
 	};
+
 	private boolean _bOLMs;
 	public static final String MESSAGE_SYSTEM = "SYS";
 	public static final String MESSAGE_NORMAL = "OLM";
@@ -310,7 +341,7 @@ public class QServer {
 			if(bType)
 				id= MESSAGE_SYSTEM + sdf.format(_iOLMID++);
 			else
-				id= "OLM" + sdf.format(_iOLMID++);
+				id= MESSAGE_NORMAL + sdf.format(_iOLMID++);
 			_htOLMTable.put(id,olm);
 		}
 		try {
@@ -347,7 +378,7 @@ public class QServer {
 	 * @param user
 	 * @return
 	 */
-	private QServer getSession(String name) {
+	private static QServer getSession(String name) {
 		return (QServer)_htServers.get(name.toLowerCase());
 	}
 	
@@ -377,5 +408,17 @@ public class QServer {
 			}
 			
 		}
+	}
+
+	/**
+	 * @param name
+	 */
+	public static boolean killSession(String name) {
+		QServer s=getSession(name);
+		if(s!=null) {
+			s.terminate();
+			return true;
+		}
+		return false;
 	}
 }

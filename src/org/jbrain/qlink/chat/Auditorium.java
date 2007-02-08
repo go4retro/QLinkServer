@@ -79,4 +79,10 @@ public class Auditorium extends AbstractRoom {
 		if(event.getRecipientSeat()==SystemMessageEvent.SEAT_BROADCAST)
 			super.processSystemMessageEvent(event);
 	}
+	
+	public void leave() {
+		RoomManager.leaveAuditorium(_sHandle);
+		super.leave();
+	}
+
 }

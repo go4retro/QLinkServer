@@ -24,10 +24,14 @@
 package org.jbrain.qlink.chat;
 
 public interface Room {
+
 	/**
 	 * @return
+	 * 
+	 * @uml.property name="name" multiplicity="(0 1)"
 	 */
 	public abstract String getName();
+
 
 	/**
 	 * @return
@@ -59,8 +63,12 @@ public interface Room {
 
 	/**
 	 * @return
+	 * 
+	 * @uml.property name="pendingGame"
+	 * @uml.associationEnd multiplicity="(0 1)"
 	 */
 	public abstract Game getPendingGame();
+
 
 	/**
 	 * @param handle
@@ -74,6 +82,11 @@ public interface Room {
 	public abstract boolean isPublicRoom();
 	
 	public GameInfo[] getGameInfoList();
+
+	/**
+	 * 
+	 * @uml.property name="info" multiplicity="(0 1)"
+	 */
 	public String getInfo();
 
 }

@@ -28,8 +28,20 @@ import java.util.List;
 
 public class Game {
 
+	/**
+	 * 
+	 * @uml.property name="_game"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	private GameDelegate _game;
+
 	private int _iSeat;
+
+	/**
+	 * 
+	 * @uml.property name="_room"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	private RoomDelegate _room;
 
 	/**

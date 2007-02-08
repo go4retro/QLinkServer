@@ -164,7 +164,8 @@ public class RoomManager {
 	 * @param handle
 	 * @return
 	 */
-	public static AbstractRoom getAuditorium(String handle) {
+	public static AbstractRoom joinAuditorium(String handle) {
+		_auditorium.addViewer(handle);
 		return new Auditorium(_auditorium,handle);
 	}
 
@@ -192,5 +193,13 @@ public class RoomManager {
 		if(room==null)
 			room=getUserLocation(_hmPrivateRooms,name);
 		return room;
+	}
+
+	/**
+	 * @param _room
+	 * @param handle
+	 */
+	public static void leaveAuditorium(String handle) {
+		_auditorium.removeViewer(handle);
 	}
 }

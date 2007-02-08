@@ -41,8 +41,23 @@ public class QConnection extends Thread {
 	private static Timer _timer=new Timer();
 	private static TimerTask _pingTimer=null;;
 	public static byte FRAME_END=0x0d;
-	private ArrayList _listeners=new ArrayList();
-	private ArrayList _alSendQueue=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_listeners"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.connection.ConnEventListener"
+	 * multiplicity="(0 -1)"
+	 */
+	private ArrayList _listeners = new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_alSendQueue"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.cmd.action.Action" multiplicity=
+	 * "(0 -1)"
+	 */
+	private ArrayList _alSendQueue = new ArrayList();
+
 	private int _iConsecutiveErrors=0;
 	private int _iQLen;
 	private byte _inSequence;
@@ -51,7 +66,16 @@ public class QConnection extends Thread {
 	private InputStream _is;
 	private OutputStream _os;
 	private static final int QSIZE = 16;
+
+	/**
+	 * 
+	 * @uml.property name="_keepAliveTask"
+	 * @uml.associationEnd inverse="this$0:org.jbrain.qlink.connection.QConnection$KeepAliveTask"
+	 * multiplicity="(1 1)"
+	 */
 	private KeepAliveTask _keepAliveTask;
+	private SuspendWatchdog _suspendWatchdog;
+
 	private int _iVersion;
 	private int _iRelease;
 	private static final byte SEQ_DEFAULT = 0x7f;
@@ -94,6 +118,12 @@ public class QConnection extends Thread {
 		}
 	};
 
+	private class SuspendWatchdog extends TimerTask {
+		public void run() {
+			// we never came back from suspend, close link.
+			close();
+		}
+	};
 	public QConnection(InputStream is, OutputStream os) {
 		init();
 		_is=is;
@@ -127,7 +157,8 @@ public class QConnection extends Thread {
 								trace("Received packet: ",data,start,i-start);
 							cmd=factory.newInstance(data,start,i-start);
 							if(cmd!=null) {
-								_keepAliveTask.reset();
+								if(_keepAliveTask!=null)
+									_keepAliveTask.reset();	
 								_log.debug("Received " + cmd.getName());
 								if(cmd instanceof Reset) {
 									_log.debug("Issuing RESET Ack command");
@@ -265,7 +296,8 @@ public class QConnection extends Thread {
 		if(_bRunning) {
 			_bRunning=false;
 			stopTimer();
-			_keepAliveTask.cancel();
+			if(_keepAliveTask!=null)
+				_keepAliveTask.cancel();
 			_log.debug("Sending Disconnect Action to server");
 			try {
 				processActionEvent(new ActionEvent(this,new LostConnection()));
@@ -273,7 +305,6 @@ public class QConnection extends Thread {
 				_log.error("Unchecked Exception",e);
 			}
 			_log.debug("Terminating link");
-			_keepAliveTask.cancel();
 			if(_os!=null) {
 				try {
 					_os.close();
@@ -413,18 +444,36 @@ public class QConnection extends Thread {
 	public synchronized void suspendLink() {
 		// remove ping timer.
 		stopTimer();
-		_keepAliveTask.cancel();
+		if(_keepAliveTask!=null)
+			_keepAliveTask.cancel();
+		else
+			_log.error("Suspending, but KeepAliveTask is null!");
+		_keepAliveTask=null;
 		_bSuspend=true;
+		
+		// but, we need to add a longer timer, or otherwise, the link could hang here.
+		
+		_suspendWatchdog=new SuspendWatchdog();
+		_log.debug("Scheduling suspend watchdog for 5 minutes");
+		_timer.schedule(_suspendWatchdog,5*60000);
+		
 	}
 
 	/**
 	 * 
 	 */
 	public synchronized void resumeLink() {
-		_log.debug("Creating keep alive timer");
-		_keepAliveTask=new KeepAliveTask();
-		_log.debug("Scheduling keep alive timer for 60 second intervals");
-		_timer.scheduleAtFixedRate(_keepAliveTask,60000,60000);
+		// killing watchdog.
+		if(_suspendWatchdog!=null)
+			_suspendWatchdog.cancel();
+		_suspendWatchdog=null;
+		if(_keepAliveTask==null) {
+			_log.debug("Creating keep alive timer");
+			_keepAliveTask=new KeepAliveTask();
+			_log.debug("Scheduling keep alive timer for 60 second intervals");
+			_timer.scheduleAtFixedRate(_keepAliveTask,60000,60000);
+		} else
+			_log.warn("Resuming, but KeepAliveTask alreayd active");
 		_bSuspend=false;
 		try {
 			// need to drain queue.

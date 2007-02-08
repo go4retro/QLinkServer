@@ -29,6 +29,12 @@ import org.jbrain.qlink.cmd.action.*;
 
 
 public class ActionEvent extends EventObject {
+
+	/**
+	 * 
+	 * @uml.property name="_action"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	Action _action;
 
 	/**

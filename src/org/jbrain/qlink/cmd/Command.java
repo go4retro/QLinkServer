@@ -33,6 +33,11 @@ public interface Command {
 	 */
 	public byte getRecvSequence();
 	public byte getCommand();
+
+	/**
+	 * 
+	 * @uml.property name="name" multiplicity="(0 1)"
+	 */
 	public String getName();
 
 	/**

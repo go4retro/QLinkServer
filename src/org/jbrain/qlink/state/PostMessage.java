@@ -40,7 +40,14 @@ import org.jbrain.qlink.db.DBUtils;
 public class PostMessage extends AbstractState {
 	private static Logger _log=Logger.getLogger(PostMessage.class);
 	private int _iBaseID;
+
+	/**
+	 * 
+	 * @uml.property name="_state"
+	 * @uml.associationEnd multiplicity="(0 1)"
+	 */
 	private QState _state;
+
 	private StringBuffer _sbText=new StringBuffer();
 	private int _iParentID;
 	private int _iNextID;

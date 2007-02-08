@@ -37,16 +37,43 @@ import org.jbrain.qlink.cmd.action.*;
 public class PlayGame extends AbstractPhaseState {
 	private static Logger _log=Logger.getLogger(PlayGame.class);
 	private static Timer _timer=new Timer();
-	
+
+	/**
+	 * 
+	 * @uml.property name="_intState"
+	 * @uml.associationEnd multiplicity="(0 1)"
+	 */
 	private QState _intState;
+
 	private boolean _bSystemPickOrder;
 	private String _sType;
 	private String _sName;
+
+	/**
+	 * 
+	 * @uml.property name="_room"
+	 * @uml.associationEnd multiplicity="(0 1)"
+	 */
 	private Room _room;
+
+	/**
+	 * 
+	 * @uml.property name="_game"
+	 * @uml.associationEnd multiplicity="(0 1)"
+	 */
 	private Game _game;
+
 	private boolean _bInvited;
 	private int _iGameID;
-	private ArrayList _alInvitees=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_alInvitees"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.cmd.action.GamePlayer" multiplicity=
+	 * "(0 -1)"
+	 */
+	private ArrayList _alInvitees = new ArrayList();
+
 	private TimerTask _timerTask;
 	private boolean _bRequestRestart=false;
 	private static final int PHASE_INVITE = 1;
@@ -96,96 +123,107 @@ public class PlayGame extends AbstractPhaseState {
 		}
 	};
 
-	private GameEventListener _listener=new GameEventListener() {
+	/**
+	 * 
+	 * @uml.property name="_listener"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
+	private GameEventListener _listener = new GameEventListener() {
 
 		public void gameSent(GameCommEvent event) {
-			if(!event.getHandle().equals(_server.getHandle())) {
-				if(_log.isDebugEnabled())
-					_log.debug("Seat: " + event.getSeat() + " sent game data: '" + event.getText() +"'");
-				send(new GameSend(event.getSeat(),event.getText()));
+			if (!event.getHandle().equals(_server.getHandle())) {
+				if (_log.isDebugEnabled())
+					_log.debug("Seat: "
+						+ event.getSeat()
+						+ " sent game data: '"
+						+ event.getText()
+						+ "'");
+				send(new GameSend(event.getSeat(), event.getText()));
 			}
 		}
 
 		public void eventOccurred(GameEvent event) {
-			switch(event.getType()) {
-				case GameEvent.LEAVE_GAME:
-					if(!event.getHandle().equals(_server.getHandle())) {
+			switch (event.getType()) {
+				case GameEvent.LEAVE_GAME :
+					if (!event.getHandle().equals(_server.getHandle())) {
 						_log.debug(event.getHandle() + " left game");
 						// if we are playing the game, and someone leaves, let the other user know.
 						send(new PlayerLeftGame(event.getHandle()));
 					}
 					break;
-				case GameEvent.ACCEPT_INVITE:
-					if(!_bInvited) {
+				case GameEvent.ACCEPT_INVITE :
+					if (!_bInvited) {
 						_log.debug(event.getHandle() + " accepted game invite");
-						if(_game.canContinue()) {
-							if(_timerTask!=null) {
+						if (_game.canContinue()) {
+							if (_timerTask != null) {
 								_timerTask.cancel();
-								_timerTask=null;
+								_timerTask = null;
 							}
 							setPhase(PHASE_REQUEST_LOAD);
 							_game.requestLoad();
 						}
 					}
 					break;
-				case GameEvent.DECLINE_INVITE:
-					if(!_bInvited) {
+				case GameEvent.DECLINE_INVITE :
+					if (!_bInvited) {
 						_log.debug(event.getHandle() + " declined game invite");
 						send(new PlayerDeclinedInvite(event.getSeat()));
-						if(_game.getAbstainList().size()==0) {
+						if (_game.getAbstainList().size() == 0) {
 							//everyone either accepted or declined.  delete game and send errors out.
-							if(_timerTask!=null) {
+							if (_timerTask != null) {
 								_timerTask.cancel();
-								_timerTask=null;
+								_timerTask = null;
 							}
 							_game.terminate();
 						}
 					}
 					break;
-				case GameEvent.REQUEST_LOAD:
+				case GameEvent.REQUEST_LOAD :
 					_log.debug("Sending game load command");
 					send(new LoadGame());
 					setPhase(PHASE_LOADING);
 					break;
-				case GameEvent.READY_TO_START:
+				case GameEvent.READY_TO_START :
 					setPhase(PHASE_READY_TO_START);
-					if(!_bInvited) {
-						_log.debug(event.getHandle() + " loaded the game and requests the start");
-						if(_game.canContinue()) {
+					if (!_bInvited) {
+						_log.debug(event.getHandle()
+							+ " loaded the game and requests the start");
+						if (_game.canContinue()) {
 							_game.start();
 						}
 					}
 					break;
-				case GameEvent.START_GAME:
+				case GameEvent.START_GAME :
 					setPhase(PHASE_PLAYING);
-					send(new StartGame("GAME",_game.getPlayOrder()));
+					send(new StartGame("GAME", _game.getPlayOrder()));
 					break;
-				case GameEvent.REQUEST_RESTART:
-					if(!_bRequestRestart) {
-						_log.debug(event.getHandle() + " requests a game restart");
+				case GameEvent.REQUEST_RESTART :
+					if (!_bRequestRestart) {
+						_log.debug(event.getHandle()
+							+ " requests a game restart");
 						send(new RequestGameRestart());
 						setPhase(PHASE_REQUEST_RESTART);
 					}
 					break;
-				case GameEvent.ACCEPT_RESTART:
+				case GameEvent.ACCEPT_RESTART :
 					_log.debug(event.getHandle() + " accepts a game restart");
-					if(_bRequestRestart && _game.canContinue()) {
+					if (_bRequestRestart && _game.canContinue()) {
 						send(new RestartGame());
 						_log.debug("Restarting requestor");
 					}
 					break;
-				case GameEvent.DECLINE_RESTART:
+				case GameEvent.DECLINE_RESTART :
 					_log.debug(event.getHandle() + " declined a game restart");
-					if(_bRequestRestart) {
+					if (_bRequestRestart) {
 						send(new DeclineRestart());
 					}
 					break;
-				case GameEvent.RESTART_GAME:
+				case GameEvent.RESTART_GAME :
 					_log.debug("Game is restarting");
-					send(new StartGame("GAME",_game.getPlayOrder()));
+					send(new StartGame("GAME", _game.getPlayOrder()));
 					setPhase(PHASE_PLAYING);
 					break;
-				}
+			}
 		}
 
 		public void gameTerminated(GameTerminationEvent event) {
@@ -193,18 +231,19 @@ public class PlayGame extends AbstractPhaseState {
 			// should we send the Error commands here?
 			restoreState();
 		}
-	
+
 		private void send(Action a) {
 			try {
 				_server.send(a);
 			} catch (IOException e) {
 				// leave game, and shut down.
-				_log.error("Link error",e);
+				_log.error("Link error", e);
 				_server.terminate();
 			}
 		}
-		
+
 	};
+
 	public PlayGame(QServer server, Game game) {
 		super(server, PHASE_ACCEPT_INVITE);
 		_game=game;

@@ -35,7 +35,14 @@ public abstract class AbstractDialog {
 	public static final int FORMAT_JUSTIFIED = TextFormatter.FORMAT_JUSTIFIED;
 
 	private String _sName;
+
+	/**
+	 * 
+	 * @uml.property name="_text"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	protected TextFormatter _text;
+
 	protected int _iFormat;
 	private boolean _bLogin;
 
@@ -80,7 +87,11 @@ public abstract class AbstractDialog {
 
 	/**
 	 * @return
+	 * 
+	 * @uml.property name="responseAction"
+	 * @uml.associationEnd multiplicity="(0 1)"
 	 */
 	public abstract Action getResponseAction();
+
 	
 }

@@ -95,9 +95,9 @@ public class MainMenu extends AbstractState {
             	}
             	if(sb.length()>0) {
             		_server.send(new BulletinLine(sb.toString(),true));
+            	}
         	} else {
         		// we have no bulletin data.
-        	}
         		_server.send(new DisplayMainMenu());
         	}
         } catch (SQLException e) {

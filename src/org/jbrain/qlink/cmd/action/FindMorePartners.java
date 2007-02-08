@@ -23,15 +23,19 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.Command;
+import org.jbrain.qlink.cmd.CRCException;
 
+public class FindMorePartners extends AbstractAction {
 
-public interface Action extends Command {
-
-	/**
-	 * 
-	 * @uml.property name="action" multiplicity="(0 1)"
-	 */
-	public String getAction();
-
+	public static final String MNEMONIC="PE";
+	private int _iNum;
+	
+	public FindMorePartners(byte[] b, int start, int len) throws CRCException {
+		super(b,start,len);
+		_iNum=b[start+10]& 0x0f;
+	}
+	
+	public int getNumberToFind() {
+		return _iNum;
+	}
 }

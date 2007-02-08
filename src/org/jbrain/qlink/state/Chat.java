@@ -36,10 +36,31 @@ import org.jbrain.qlink.util.QuotedStringTokenizer;
 
 public class Chat extends AbstractState {
 	private static Logger _log=Logger.getLogger(Chat.class);
+
+	/**
+	 * 
+	 * @uml.property name="_room"
+	 * @uml.associationEnd multiplicity="(0 1)"
+	 */
 	private Room _room;
+
 	private int _iSeat;
+
+	/**
+	 * 
+	 * @uml.property name="_listener"
+	 * @uml.associationEnd inverse="this$0:org.jbrain.qlink.state.Chat$QueuedChatEventListener"
+	 * multiplicity="(0 1)"
+	 */
 	private QueuedChatEventListener _listener;
+
+	/**
+	 * 
+	 * @uml.property name="_rooms"
+	 * @uml.associationEnd multiplicity="(0 -1)"
+	 */
 	private RoomInfo[] _rooms;
+
 	private int _roomPos;
 	private ArrayList _alQuestion=new ArrayList();
 	
@@ -314,6 +335,23 @@ public class Chat extends AbstractState {
 			// we bypass the process function for this.
 			_room.say((String[])_alQuestion.toArray(new String[_alQuestion.size()]));
 			_alQuestion.clear();
+		} else if(a instanceof IncludeMe) {
+			_server.send(new PartnerSearchMessage("This is not implemented yet"));
+		} else if(a instanceof ExcludeMe) {
+			_server.send(new PartnerSearchMessage("This is not implemented yet"));
+		} else if(a instanceof PartnerSearchStatusRequest) {
+			_server.send(new PartnerSearchMessage("This is not implemented yet"));
+		} else if(a instanceof CancelPartnerSearch) {
+			_server.send(new PartnerSearchMessage("This is not implemented yet"));
+		} else if(a instanceof FindPartners) {
+			_log.debug(_server.getHandle() + " wants system to pick partners for " + ((FindPartners)a).getTitle());
+			_server.send(new FindPartnersAck());
+		} else if(a instanceof SelectPartner) {
+			_log.debug("Adding " + ((SelectPartner)a).getHandle() + " to partner list");
+			
+		} else if(a instanceof FindMorePartners) {
+			_log.debug("System needs to find  " + ((FindMorePartners)a).getNumberToFind());
+			_server.send(new FindPartnersAck());
 		}
 		if(!rc)
 			rc=super.execute(a);
@@ -324,14 +362,14 @@ public class Chat extends AbstractState {
 	 * @param text
 	 */
 	private void process(String text) throws IOException {
-		if(text.startsWith("//")) {
+		if(text.startsWith("//") || text.startsWith("=q")) {
 			// do //msg and //join here.
 			String[] olm;
 			String name=null,msg=null, error=null;
-			QuotedStringTokenizer st=new QuotedStringTokenizer(text);
+			QuotedStringTokenizer st=new QuotedStringTokenizer(text.substring(2));
 			String cmd=st.nextToken(" ").toLowerCase();
 			int pos=0;
-			if(cmd.startsWith("//msg")) {
+			if(cmd.startsWith("msg")) {
 				// Send someone a private msg;
 				if(st.hasMoreTokens())
 					name=st.nextToken(" ");
@@ -353,7 +391,7 @@ public class Chat extends AbstractState {
 						_server.sendOLM(name,olm);
 					}
 				}
-			} else if(cmd.startsWith("//joi")) {
+			} else if(cmd.startsWith("joi")) {
 				// join a new room;
 				if(st.hasMoreTokens()) {
 					name=st.nextToken(" ");
@@ -365,7 +403,7 @@ public class Chat extends AbstractState {
 				} else {
 					error ="No room specified";
 				}
-			} else if(cmd.startsWith("//pjoi")) {
+			} else if(cmd.startsWith("pjoi")) {
 				// join a new room;
 				if(st.hasMoreTokens()) {
 					name=st.nextToken(" ");
@@ -383,9 +421,10 @@ public class Chat extends AbstractState {
 			if(error!=null) {
 				olm=new String[1];
 				olm[0]="Error: " + error;
-				_server.sendOLM(_server.getHandle(),olm);
+				_server.sendOLM(true,olm);
 			}
 		} else {
+			// can room make sense of it?
 			_room.say(text);
 		}
 	}
@@ -454,7 +493,7 @@ public class Chat extends AbstractState {
 		
 		leaveRoom();
 		_log.debug("Joining Auditorium");
-		_room=RoomManager.getAuditorium(_server.getHandle());
+		_room=RoomManager.joinAuditorium(_server.getHandle());
 		_listener=new QueuedChatEventListener();
 		synchronized(_room) {
 			_log.debug("Adding Auditorium listener");

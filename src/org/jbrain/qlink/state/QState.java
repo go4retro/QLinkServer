@@ -33,6 +33,11 @@ public interface QState {
 	public boolean execute(Action a) throws IOException;
 	public void passivate() throws IOException;
 	public void terminate();
+
+	/**
+	 * 
+	 * @uml.property name="name" multiplicity="(0 1)"
+	 */
 	public String getName();
 
 }

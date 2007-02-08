@@ -60,11 +60,40 @@ class Question {
 
 class AuditoriumDelegate extends RoomDelegate {
 	private static Logger _log=Logger.getLogger(AuditoriumDelegate.class);
-	private List _queue=Collections.synchronizedList(new ArrayList());
-	private static final String SYS_NAME = "AudManager";
+
+	/**
+	 * 
+	 * @uml.property name="_queue"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.Question" multiplicity="(0
+	 * -1)"
+	 */
+	private List _queue = Collections.synchronizedList(new ArrayList());
+
 	private boolean _bAcceptingQuestions = false;
-	private List _alRegList=Collections.synchronizedList(new ArrayList());
-	private AutoText _autoTalk; 
+
+	/**
+	 * 
+	 * @uml.property name="_alRegList"
+	 * @uml.associationEnd elementType="java.lang.Integer" multiplicity="(0 -1)"
+	 */
+	private List _alRegList = Collections.synchronizedList(new ArrayList());
+
+	/**
+	 * 
+	 * @uml.property name="_autoTalk"
+	 * @uml.associationEnd inverse="this$0:org.jbrain.qlink.chat.AuditoriumDelegate$AutoText"
+	 * multiplicity="(0 1)"
+	 */
+	private AutoText _autoTalk;
+
+	/**
+	 * 
+	 * @uml.property name="_alViewers"
+	 * @uml.associationEnd elementType="java.lang.String" multiplicity="(0 -1)"
+	 */
+	private List _alViewers = Collections.synchronizedList(new ArrayList());
+
+ 
 	class AutoText extends Thread {
 		//private String pad="                              ";
 		private String _sKey;
@@ -134,7 +163,7 @@ class AuditoriumDelegate extends RoomDelegate {
 	}
 	
 	public void say(int seat, String text) {
-		if(text.startsWith("//")) {
+		if(text.startsWith("//") || text.startsWith("=q")) {
 			processCommand(seat,text);
 		} else
 			super.say(seat,text);
@@ -171,13 +200,13 @@ class AuditoriumDelegate extends RoomDelegate {
 	 * @param seat
 	 * @param text
 	 */
-	private void processCommand(int seat, String text) {
+	protected void processCommand(int seat, String text) {
 		ArrayList alMsg=new ArrayList();
 		String[] cmdline=text.split(" ");
-		String cmd=cmdline[0].toLowerCase();
+		String cmd=cmdline[0].toLowerCase().substring(2);
 		StringBuffer sb=new StringBuffer();
 		int pos=0;
-		if(cmd.startsWith("//sho") || cmd.startsWith("//air")) {
+		if(cmd.startsWith("sho") || cmd.startsWith("air")) {
 			// show
 			if(cmdline.length>1)
 				pos=getNumber(cmdline[1]);
@@ -191,7 +220,7 @@ class AuditoriumDelegate extends RoomDelegate {
 				say(q.getHandle(),sb.toString());
 				sb.setLength(0);
 			}
-		} else if(cmd.startsWith("//get")) {
+		} else if(cmd.startsWith("get")) {
 			// get
 			if(cmdline.length>1)
 				pos=getNumber(cmdline[1]);
@@ -200,7 +229,7 @@ class AuditoriumDelegate extends RoomDelegate {
 				privmsgQuestion(alMsg,pos);
 				sendSystemMessage(SYS_NAME,seat,alMsg);
 			}
-		} else if(cmd.startsWith("//del") || cmd.startsWith("//rem")) {
+		} else if(cmd.startsWith("del") || cmd.startsWith("rem")) {
 			// delete
 			if(cmdline.length>1)
 				pos=getNumber(cmdline[1]);
@@ -210,7 +239,7 @@ class AuditoriumDelegate extends RoomDelegate {
 				alMsg.add("Question " + pos + " deleted.");
 				sendSystemMessage(SYS_NAME,seat,alMsg);
 			}
-		} else if(cmd.startsWith("//lis")) {
+		} else if(cmd.startsWith("lis")) {
 			// list
 			if(cmdline.length>1)
 				pos=getNumber(cmdline[1]);
@@ -221,32 +250,32 @@ class AuditoriumDelegate extends RoomDelegate {
 					privmsgQuestion(alMsg,pos);
 				sendSystemMessage(SYS_NAME,seat,alMsg);
 			}
-		} else if(cmd.startsWith("//cou")) {
+		} else if(cmd.startsWith("cou")) {
 			// count
 			_log.debug("Sending count of queued questions: " + _queue.size());
 			alMsg.add("There are " + _queue.size() + " questions in the queue.");
 			sendSystemMessage(SYS_NAME,seat,alMsg);
-		} else if(cmd.startsWith("//cle")) {
+		} else if(cmd.startsWith("cle")) {
 			// clear Q
 			_log.debug("Clearing question queue");
 			_queue.clear();
 			alMsg.add("Queue now empty.");
 			sendSystemMessage(SYS_NAME,seat,alMsg);
-		} else if(cmd.startsWith("//acc")){
+		} else if(cmd.startsWith("acc")){
 			_log.debug("Accepting questions");
 			_bAcceptingQuestions=true;
 			processEvent(new QuestionStateEvent(this,QuestionStateEvent.ACCEPTING_QUESTIONS));
-		} else if(cmd.startsWith("//rej")){
+		} else if(cmd.startsWith("rej")){
 			_log.debug("Rejecting questions");
 			_bAcceptingQuestions=false;
 			processEvent(new QuestionStateEvent(this,QuestionStateEvent.NOT_ACCEPTING_QUESTIONS));
-		} else if(cmd.startsWith("//reg")){
+		} else if(cmd.startsWith("reg")){
 			_log.debug("Registering for notifications");
 			_alRegList.add(new Integer(seat));
-		} else if(cmd.startsWith("//unr")){
+		} else if(cmd.startsWith("unr")){
 			_log.debug("De-Registering for notifications");
 			_alRegList.remove(new Integer(seat));
-		} else if(cmd.startsWith("//auto")){
+		} else if(cmd.startsWith("auto")){
 			_log.debug("Starting autotext");
 			if(cmdline.length>1) {
 				_log.debug("Sending auto text: " + cmdline[1]);
@@ -256,22 +285,11 @@ class AuditoriumDelegate extends RoomDelegate {
 				sendSystemMessage(SYS_NAME,seat,alMsg);
 			}
 		} else {
-			// don't echo, maybe should error out?
-			alMsg.add(text + " not understood");
-			sendSystemMessage(SYS_NAME,seat,alMsg);
+			super.processCommand(seat,text);
 		}
 		
 		
 		// execture command
-	}
-
-	/**
-	 * @param sys_name2
-	 * @param seat
-	 * @param alMsg
-	 */
-	private void sendSystemMessage(String name, int seat, List l) {
-		processEvent(new SystemMessageEvent(this,name,seat,(String[])l.toArray(new String[0])));
 	}
 
 	/**
@@ -355,5 +373,15 @@ class AuditoriumDelegate extends RoomDelegate {
 		// TODO Auto-generated method stub
 		
 	}
+
+	/**
+	 * @param handle
+	 */
+	public void addViewer(String handle) {
+		_alViewers.add(handle);
+	}
 	
+	public void removeViewer(String handle) {
+		_alViewers.remove(handle);
+	}
 }

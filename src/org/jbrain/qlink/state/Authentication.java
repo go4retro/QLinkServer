@@ -46,101 +46,129 @@ public class Authentication extends AbstractPhaseState {
 	private static Random _random = new Random();
 	private static EntryDialog _newUserDialog;
 	private static InfoDialog _welcomeDialog;
-	private DialogCallBack _newUserCallBack=new DialogCallBack() {
+
+	/**
+	 * 
+	 * @uml.property name="_newUserCallBack"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
+	private DialogCallBack _newUserCallBack = new DialogCallBack() {
 		/* (non-Javadoc)
 		 * @see org.jbrain.qlink.state.DialogCallBack#handleResponse(org.jbrain.qlink.dialog.AbstractDialog, org.jbrain.qlink.cmd.action.Action)
 		 */
-		public boolean handleResponse(AbstractDialog d, Action a) throws IOException {
+		public boolean handleResponse(AbstractDialog d, Action a)
+			throws IOException {
 			_log.debug("We received " + a.getName() + " from entry dialog");
-			if(a instanceof ZA) {
-				_handle=((ZA)a).getResponse();
+			if (a instanceof ZA) {
+				_handle = ((ZA) a).getResponse();
 				// uppercase the first letter... and trim
-				_handle=_handle.substring(0,1).toUpperCase()+_handle.substring(1).trim();
-				if(containsInvalidChars(_handle)) {
+				_handle = _handle.substring(0, 1).toUpperCase()
+					+ _handle.substring(1).trim();
+				if (_handle.length() > 10) {
+					_log.debug("Handle '" + _handle + "' is too long");
+					_server.send(_newUserDialog
+						.getErrorResponse("We're sorry, but '"
+							+ _handle
+							+ "' is too long.  Please select a shorter name"));
+				} else if (containsInvalidChars(_handle)) {
 					_log.debug("'" + _handle + "' contains invalid characters");
-	            	_server.send(_newUserDialog.getErrorResponse("We're sorry, but screen names can only contains letters, digits, space, '+', '-', or '.' characters.  Please select another name."));
-				} else if(_handle.charAt(0)=='.') {
-					_log.debug("'" + _handle + "' contains invalid characters at beginning");
-            	_server.send(_newUserDialog.getErrorResponse("We're sorry, but screen names cannot start with a '.' character.  Please select another name."));
+					_server
+						.send(_newUserDialog
+							.getErrorResponse("We're sorry, but screen names can only contains letters, digits, or spaces.  Please select another name."));
+				} else if (!Character.isLetter(_handle.charAt(0))) {
+					_log.debug("'"
+						+ _handle
+						+ "' contains leading space or number");
+					_server
+						.send(_newUserDialog
+							.getErrorResponse("We're sorry, but screen names must start with a letter.  Please select another name."));
 				} else
 					try {
-						if(containsReservedWords(_handle)) {
-							_log.debug("'" + _handle + "' contains a reserved word");
-							_server.send(_newUserDialog.getErrorResponse("We're sorry, but your choice contains a reserved word.  Please select another name."));
-						} else if(_handle.length()>10) {
-							_log.debug("Handle '" + _handle + "' is too long");
-							_server.send(_newUserDialog.getErrorResponse("We're sorry, but '"+ _handle + "' is too long.  Please select a shorter name"));
+						if (containsReservedWords(_handle)) {
+							_log.debug("'"
+								+ _handle
+								+ "' contains a reserved word");
+							_server
+								.send(_newUserDialog
+									.getErrorResponse("We're sorry, but your choice contains a reserved word.  Please select another name."));
 						} else {
 							// adding name.
-							if(addUser()) {
+							if (addUser()) {
 								_server.setHandle(_handle);
-								_server.send(((EntryDialog)d).getSuccessResponse("Congratulations, " + _handle + "!\n\nWe hope you enjoy your visit to Q-LINK."));
+								_server
+									.send(((EntryDialog) d)
+										.getSuccessResponse("Congratulations, "
+											+ _handle
+											+ "!\n\nWe hope you enjoy your visit to Q-LINK."));
 								return true;
 							} else {
-						    	_server.send(_newUserDialog.getErrorResponse("We're sorry, but '" + _handle + "' is already in use.  Please select another name"));
+								_server
+									.send(_newUserDialog
+										.getErrorResponse("We're sorry, but '"
+											+ _handle
+											+ "' is already in use.  Please select another name."));
 							}
 						}
 					} catch (SQLException e) {
 						// something very bad happened... We cannot continue.
-						_log.error("Error during reserved word lookup",e);
+						_log.error("Error during reserved word lookup", e);
 						_server.terminate();
 					}
-			} else if(a instanceof D2) {
-	    		_server.send(new SendAccountNumber(_account,_handle));
-	    		_server.send(new ClearExtraAccounts());
-	    		_server.send(new ChangeAccessCode(_code));
+			} else if (a instanceof D2) {
+				_server.send(new SendAccountNumber(_account, _handle));
+				_server.send(new ClearExtraAccounts());
+				_server.send(new ChangeAccessCode(_code));
 				_log.info("PHASE: Updating access code on disk");
-    			_server.setState(Authentication.this);
-	    		setPhase(PHASE_UPDATECODE);
+				_server.setState(Authentication.this);
+				setPhase(PHASE_UPDATECODE);
 				return true;
 			}
 			return false;
 		}
 
-		private boolean containsReservedWords(String handle) throws SQLException {
-	        Connection conn=null;
-	        Statement stmt = null;
-	        ResultSet rs = null;
-	        
-	        try {
-	        	_log.debug("Checking for reserved words");
-	        	conn=DBUtils.getConnection();
-	            stmt = conn.createStatement();
-                rs=stmt.executeQuery("SELECT name from reserved_names");
-                if(rs.next()) {
-                	// check the found names
-                	do {
-                		if(handle.toLowerCase().indexOf(rs.getString("name").toLowerCase())> -1)
-                			return true;
-                	} while(rs.next());
-	        	}
-	        } finally {
-	        	DBUtils.close(rs);
-	            if (stmt != null) {
-	                try {
-	                    stmt.close();
-	                } catch (SQLException sqlEx) { }// ignore }
-	                stmt = null;
-	            }
-	            if(conn!=null) 
-	            	try {
-	            		conn.close();
-	            	} catch (SQLException e) {	}
-	        }
-	        return false;
+		private boolean containsReservedWords(String handle)
+			throws SQLException {
+			Connection conn = null;
+			Statement stmt = null;
+			ResultSet rs = null;
+
+			try {
+				_log.debug("Checking for reserved words");
+				conn = DBUtils.getConnection();
+				stmt = conn.createStatement();
+				rs = stmt.executeQuery("SELECT name from reserved_names");
+				if (rs.next()) {
+					// check the found names
+					do {
+						if (handle.toLowerCase().indexOf(
+							rs.getString("name").toLowerCase()) > -1)
+							return true;
+					} while (rs.next());
+				}
+			} finally {
+				DBUtils.close(rs);
+				if (stmt != null) {
+					try {
+						stmt.close();
+					} catch (SQLException sqlEx) {
+					}// ignore }
+					stmt = null;
+				}
+				if (conn != null)
+					try {
+						conn.close();
+					} catch (SQLException e) {
+					}
+			}
+			return false;
 		}
 
 		private boolean containsInvalidChars(String handle) {
-			boolean rc=false;
+			boolean rc = false;
 			char ch;
-			for(int i=0;i<handle.length();i++) {
-				ch=handle.charAt(i);
-				if(!(Character.isLetterOrDigit(ch)
-					|| ch=='-'
-					|| ch==' '
-					|| ch=='+'
-					|| ch=='.'
-					))
+			for (int i = 0; i < handle.length(); i++) {
+				ch = handle.charAt(i);
+				if (!(Character.isLetterOrDigit(ch) || ch == ' '))
 					return true;
 			}
 			return false;

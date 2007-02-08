@@ -35,7 +35,14 @@ import org.jbrain.qlink.cmd.action.*;
 
 public class GatewayState extends AbstractState implements Runnable {
 	private static Logger _log=Logger.getLogger(GatewayState.class);
+
+	/**
+	 * 
+	 * @uml.property name="_intState"
+	 * @uml.associationEnd multiplicity="(0 1)"
+	 */
 	private QState _intState;
+
 	private String _sHost;
 	private int _iPort;
 	private boolean _bRunning;
@@ -109,9 +116,10 @@ public class GatewayState extends AbstractState implements Runnable {
 	 * @see java.lang.Runnable#run()
 	 */
 	public void run() {
-		BufferedReader br;
+		String ESC_CR="" + (char)0x7f;
 		byte[] data=new byte[100];
 		int len;
+		String line;
 
 		_bRunning=true;
 		try {
@@ -121,10 +129,10 @@ public class GatewayState extends AbstractState implements Runnable {
 				if(len<0 && _bRunning) {
 					exit("Server disconnected");
 				} else {
-					for(int i=0;i<len;i++)
-						if(data[i]==(byte)0x0d)
-							data[i]=0x7f;
-					_server.send(new GatewaySend(new String(data,0,len)));
+					line=new String(data,0,len,"ISO-8859-1");
+					line=line.replaceAll("\r",ESC_CR);
+					line=line.replaceAll("\n","");
+					_server.send(new GatewaySend(line));
 				}
 			}
 			// someone shut us down..
@@ -139,27 +147,32 @@ public class GatewayState extends AbstractState implements Runnable {
 		}
 		
 	}
+	
+	private void exit(String text) {
+		try {
+			_server.send(new GatewayExit(text));
+			_server.setState(_intState);
+			close();
+		} catch (IOException e) {
+			_log.error("IO Error",e);
+			_server.terminate();
+		}
+		
+	}
 
 	/**
 	 * 
 	 */
-	private void exit(String text) {
+	private void close() {
 		_bRunning=false;
 		try {
 			_is.close();
 			_w.close();
 		} catch (IOException e) { }
-		try {
-			_server.send(new GatewayExit(text));
-			_server.setState(_intState);
-		} catch (IOException e) {
-			_log.error("IO Error",e);
-			_server.terminate();
-		}
 	}
 	
 	public void terminate() {
-		exit("gateway service disconnected");
+		close();
 		_intState.terminate();
 	}
 

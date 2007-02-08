@@ -26,9 +26,28 @@ package org.jbrain.qlink.chat;
 import java.util.ArrayList;
 
 public abstract class AbstractRoom implements Room {
+
+	/**
+	 * 
+	 * @uml.property name="_room"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	protected RoomDelegate _room;
-	private ArrayList _listeners=new ArrayList();
-	private RoomEventListener _listener=new RoomEventListener() {
+
+	/**
+	 * 
+	 * @uml.property name="_listeners"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.RoomEventListener" multiplicity=
+	 * "(0 -1)"
+	 */
+	private ArrayList _listeners = new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_listener"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
+	private RoomEventListener _listener = new RoomEventListener() {
 		public void userSaid(ChatEvent event) {
 			processEvent(event);
 		}
@@ -48,6 +67,7 @@ public abstract class AbstractRoom implements Room {
 			processEvent(event);
 		}
 	};
+
 	/**
 	 * @param room
 	 * @param user

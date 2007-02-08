@@ -38,6 +38,7 @@ import org.apache.log4j.Logger;
 import org.jbrain.qlink.QServer;
 import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.db.DBUtils;
+import org.jbrain.qlink.io.EscapedInputStream;
 import org.jbrain.qlink.text.TextFormatter;
 
 class MenuEntry {
@@ -154,10 +155,38 @@ class MessageEntry {
 public class DepartmentMenu extends AbstractState {
 	private static Logger _log=Logger.getLogger(DepartmentMenu.class);
 	private List _lText;
+
+	/**
+	 * 
+	 * @uml.property name="_iLines"
+	 * @uml.associationEnd elementType="java.lang.String" multiplicity="(0 -1)"
+	 */
 	private int _iLines;
-	private ArrayList _alMessages=new ArrayList();
-	private HashMap _hmMessages=new HashMap();
-	private ArrayList _alMenu=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_alMessages"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.state.MessageEntry" multiplicity=
+	 * "(0 -1)"
+	 */
+	private ArrayList _alMessages = new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_hmMessages"
+	 * @uml.associationEnd qualifier="new:java.lang.Integer org.jbrain.qlink.state.MessageEntry"
+	 * multiplicity="(0 1)"
+	 */
+	private HashMap _hmMessages = new HashMap();
+
+	/**
+	 * 
+	 * @uml.property name="_alMenu"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.state.MenuEntry" multiplicity=
+	 * "(0 -1)"
+	 */
+	private ArrayList _alMenu = new ArrayList();
+
 	private int _iCurrMenuID;
 	private int _iCurrMessageID;
 	private int _iNextMessageID;
@@ -351,7 +380,7 @@ public class DepartmentMenu extends AbstractState {
     	return id;
 	}
 
-	public void selectItem(int id) throws IOException {
+	private void selectItem(int id) throws IOException {
         Connection conn=null;
         Statement stmt = null;
         ResultSet rs = null;
@@ -382,24 +411,10 @@ public class DepartmentMenu extends AbstractState {
 		        	case MenuItem.DOWNLOAD:
 		        		_log.debug("Item is a download, display text");
 		        		displayFileInfo(id);
-	        		/*case MenuItem.GATEWAY:
+	        		case MenuItem.GATEWAY:
 	        			_log.debug("Item is a gateway, connect to it");
-		        		if(url==null || url.equals("")) {
-		        			_server.send(new GatewayExit("Bad URL"));
-		        		} else {
-	        				int pos=url.indexOf(':');
-	        				String address=url;
-	        				int port=23;
-	        				if(pos>-1) {
-	        					address=url.substring(0,pos);
-	        					try {
-	        						port=Integer.parseInt(url.substring(pos+1));
-	        					} catch (Exception e) {}
-		        			}
-	        				QState state=new GatewayState(_server,address,port);
-	        				state.activate();
-		        		}
-		        		break;*/
+	        			connectToGateway(id);
+		        		break;
 		        	default:
 		    			_log.error("Item has unknown type, what should we do?");
 		        		break;
@@ -419,6 +434,49 @@ public class DepartmentMenu extends AbstractState {
 	
 	
 	
+	/**
+	 * @param id
+	 * @throws IOException
+	 */
+	private void connectToGateway(int id) throws IOException {
+        Connection conn=null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        String address;
+        int port;
+        
+        try {
+        	conn=DBUtils.getConnection();
+            stmt = conn.createStatement();
+            _log.debug("Get file information for  Gateway ID: " + id);
+	        rs=stmt.executeQuery("SELECT address,port from gateways where gateway_id=" + id);
+	        if(rs.next()) {
+	        	address=rs.getString("address");
+	        	port=rs.getInt("port");
+	        	if(address==null || address.equals("")) {
+	        		_log.debug("Gateway address is null or empty.");
+	    			_server.send(new GatewayExit("Destination invalid"));
+	        	} else {
+	        		if (port==0)
+	        			port=23;
+					QState state=new GatewayState(_server,address,port);
+					state.activate();
+	        	}
+	        } else {
+        		_log.debug("Gateway record does not exist.");
+    			_server.send(new GatewayExit("Destination invalid"));
+	        }
+        } catch (SQLException e) {
+        	_log.error("SQL Exception",e);
+			_server.send(new GatewayExit("Server error"));
+        } finally {
+        	DBUtils.close(rs);
+        	DBUtils.close(stmt);
+        	DBUtils.close(conn);
+        }
+		
+	}
+
 	/**
 	 * 
 	 */

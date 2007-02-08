@@ -25,7 +25,14 @@ package org.jbrain.qlink.cmd;
 import org.jbrain.qlink.cmd.action.*;
 
 public class CommandFactory {
+
+	/**
+	 * 
+	 * @uml.property name="_factory"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	private ActionFactory _factory;
+
 	public CommandFactory() {
 		_factory=new ActionFactory();
 	}

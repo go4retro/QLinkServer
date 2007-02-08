@@ -31,17 +31,54 @@ import org.jbrain.qlink.util.QuotedStringTokenizer;
 
 class RoomDelegate {
 	private static Logger _log=Logger.getLogger(RoomDelegate.class);
+	public static final String SYS_NAME = "System";
 	public static final int ROOM_CAPACITY=23;
 	private String _sName;
-	private SeatInfo[] _users=new SeatInfo[ROOM_CAPACITY];
-	private Hashtable _htUsers=new Hashtable();
-	protected ArrayList _listeners=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_users"
+	 * @uml.associationEnd multiplicity="(0 -1)"
+	 */
+	private SeatInfo[] _users = new SeatInfo[ROOM_CAPACITY];
+
+	/**
+	 * 
+	 * @uml.property name="_htUsers"
+	 * @uml.associationEnd qualifier="handle:java.lang.String org.jbrain.qlink.chat.SeatInfo"
+	 * multiplicity="(0 1)"
+	 */
+	private Hashtable _htUsers = new Hashtable();
+
+	/**
+	 * 
+	 * @uml.property name="_listeners"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.RoomEventListener" multiplicity=
+	 * "(0 -1)"
+	 */
+	protected ArrayList _listeners = new ArrayList();
+
 	private boolean _bPublic;
 	private boolean _bLocked;
 	private static Random _die=new Random();
 	private static String[] _sResponses=new String[20];
-	private GameDelegate[] _userGame=new GameDelegate[ROOM_CAPACITY];
-	private ArrayList _alGames=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_userGame"
+	 * @uml.associationEnd inverse="_room:org.jbrain.qlink.chat.GameDelegate" multiplicity=
+	 * "(0 -1)"
+	 */
+	private GameDelegate[] _userGame = new GameDelegate[ROOM_CAPACITY];
+
+	/**
+	 * 
+	 * @uml.property name="_alGames"
+	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.GameDelegate" multiplicity=
+	 * "(0 -1)"
+	 */
+	private ArrayList _alGames = new ArrayList();
+
 	
 	static {
 		// probably should go into a DB or something
@@ -151,67 +188,91 @@ class RoomDelegate {
 	}
 	
 	public void say(int seat, String text) {
-		if(text.startsWith("//")) {
-			String name=null,msg=null;
-			QuotedStringTokenizer st=new QuotedStringTokenizer(text);
-			String cmd=st.nextToken(" ").toLowerCase();
-			int pos=0;
-			if(cmd.startsWith("//sysmsg") && !this.isPublicRoom()) {
-				// Send SYSOLM;
-				if(st.hasMoreTokens())
-					msg=st.nextToken("\n");
-				if(msg!= null) {
-					_log.debug("Executing '" + text + "' from seat " + seat);
-					QServer.sendSYSOLM(msg);
-				}
-			} else if(cmd.startsWith("//me")) {
-				if(st.hasMoreTokens())
-					msg=st.nextToken("\n");
-				if(msg!= null) {
-					_log.debug("Executing '" + text + "' from seat " + seat);
-					processEvent(new ChatEvent(this,"","*" + _users[seat].getHandle() + " " + msg));
-				}
-			} else if(cmd.startsWith("//8ba")) {
-				processEvent(new ChatEvent(this,"System", _sResponses[getRoll(20)-1]));
-			} else if(cmd.startsWith("//roll")) {
-				//roll num size
-				int num=2, size=6;
-				if(st.hasMoreTokens()) {
-					String sNum="2",sSize="6";
-					sNum=st.nextToken();
-					if(st.hasMoreTokens())
-						sSize=st.nextToken();
-					try {
-						num=Integer.parseInt(sNum);
-						size=Integer.parseInt(sSize);
-					} catch (Exception e) {;}
-				}
-				if(num>8)
-					num=8;
-				else if(num<1)
-					num=2;
-				if(size>99)
-					size=99;
-				else if(size<2)
-					size=6;
-				StringBuffer sb=new StringBuffer();
-				sb.append(_users[seat].getHandle());
-				sb.append(" rolled ");
-				sb.append(num);
-				sb.append(" ");
-				sb.append(size);
-				sb.append("-sided di");
-				sb.append(num==1?"e:":"ce:");
-				for(int i=0;i<num;i++) {
-					sb.append(" ");
-					sb.append(getRoll(size));
-				}
-				processEvent(new ChatEvent(this,"System", sb.toString()));
-			} else {
-				processEvent(new ChatEvent(this,seat,text));
-			}
-		} else
+		if(text.startsWith("//") || text.startsWith("=q")) {
+			processCommand(seat,text);
+		} else {
 			processEvent(new ChatEvent(this,seat,text));
+		}
+	}
+	
+	protected void processCommand(int seat, String text) {
+		ArrayList alMsg=new ArrayList();
+		String error=null;
+		String name=null,msg=null;
+		QuotedStringTokenizer st=new QuotedStringTokenizer(text.substring(2));
+		String cmd=st.nextToken(" ").toLowerCase();
+		int pos=0;
+		if(cmd.startsWith("sysmsg") && !this.isPublicRoom()) {
+			// Send SYSOLM;
+			if(st.hasMoreTokens())
+				msg=st.nextToken("\n");
+			if(msg!= null) {
+				_log.debug("Executing '" + text + "' from seat " + seat);
+				QServer.sendSYSOLM(msg);
+			}
+		} else if(cmd.startsWith("kill") && !this.isPublicRoom()) {
+				// Kill account;
+				if(st.hasMoreTokens())
+					name=st.nextToken("\n");
+				if(name!= null) {
+					_log.debug("Killing '" + name + "' session ");
+					if(QServer.killSession(name)) {
+						error=name + "'s session terminated";
+					} else {
+						error="Session could not be terminated";
+					}
+				}
+		} else if(cmd.startsWith("me")) {
+			if(st.hasMoreTokens())
+				msg=st.nextToken("\n");
+			if(msg!= null) {
+				_log.debug("Executing '" + text + "' from seat " + seat);
+				processEvent(new ChatEvent(this,"","*" + _users[seat].getHandle() + " " + msg));
+			}
+		} else if(cmd.startsWith("8ba")) {
+			processEvent(new ChatEvent(this,"System", _sResponses[getRoll(20)-1]));
+		} else if(cmd.startsWith("roll")) {
+			//roll num size
+			int num=2, size=6;
+			if(st.hasMoreTokens()) {
+				String sNum="2",sSize="6";
+				sNum=st.nextToken();
+				if(st.hasMoreTokens())
+					sSize=st.nextToken();
+				try {
+					num=Integer.parseInt(sNum);
+					size=Integer.parseInt(sSize);
+				} catch (Exception e) {;}
+			}
+			if(num>8)
+				num=8;
+			else if(num<1)
+				num=2;
+			if(size>99)
+				size=99;
+			else if(size<2)
+				size=6;
+			StringBuffer sb=new StringBuffer();
+			sb.append(_users[seat].getHandle());
+			sb.append(" rolled ");
+			sb.append(num);
+			sb.append(" ");
+			sb.append(size);
+			sb.append("-sided di");
+			sb.append(num==1?"e:":"ce:");
+			for(int i=0;i<num;i++) {
+				sb.append(" ");
+				sb.append(getRoll(size));
+			}
+			processEvent(new ChatEvent(this,"System", sb.toString()));
+		} else {
+			alMsg.add("Error: " + text + " not understood");
+			sendSystemMessage(SYS_NAME,seat,alMsg);
+		}
+		if(error!=null) {
+			alMsg.add(error);
+			sendSystemMessage(SYS_NAME,seat,alMsg);
+		}
 	}
 
 	/**
@@ -410,5 +471,15 @@ class RoomDelegate {
 	public String getInfo() {
 		return "";
 	}
+
+	/**
+	 * @param sys_name2
+	 * @param seat
+	 * @param alMsg
+	 */
+	protected void sendSystemMessage(String name, int seat, List l) {
+		processEvent(new SystemMessageEvent(this,name,seat,(String[])l.toArray(new String[0])));
+	}
+
 
 }

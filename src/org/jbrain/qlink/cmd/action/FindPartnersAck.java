@@ -23,15 +23,9 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.Command;
+public class FindPartnersAck extends AbstractAction {
 
-
-public interface Action extends Command {
-
-	/**
-	 * 
-	 * @uml.property name="action" multiplicity="(0 1)"
-	 */
-	public String getAction();
-
+	public FindPartnersAck() {
+		super("PO");
+	}
 }

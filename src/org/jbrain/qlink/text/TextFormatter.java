@@ -10,7 +10,14 @@ public class TextFormatter {
 	public static final int FORMAT_CENTERED=3;
 	public static final int FORMAT_PADDED=4;
 	private static final int LINE_LENGTH=40;
-	private ArrayList _alText=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_alText"
+	 * @uml.associationEnd elementType="java.lang.String" multiplicity="(0 -1)"
+	 */
+	private ArrayList _alText = new ArrayList();
+
 	private int _iFormat;
 	private int _iWidth;
 

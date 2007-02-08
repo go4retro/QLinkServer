@@ -32,9 +32,23 @@ import org.jbrain.qlink.cmd.action.*;
 
 public class SendOLMState extends AbstractState {
 	private static Logger _log=Logger.getLogger(SendOLMState.class);
+
+	/**
+	 * 
+	 * @uml.property name="_intState"
+	 * @uml.associationEnd multiplicity="(0 1)"
+	 */
 	private QState _intState;
+
 	private String _sRecipient;
-	private ArrayList _alOLMText=new ArrayList();
+
+	/**
+	 * 
+	 * @uml.property name="_alOLMText"
+	 * @uml.associationEnd elementType="java.lang.String" multiplicity="(0 -1)"
+	 */
+	private ArrayList _alOLMText = new ArrayList();
+
 	
 	public SendOLMState(QServer server, String recipient) {
 		super(server);

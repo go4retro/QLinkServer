@@ -38,7 +38,14 @@ import org.jbrain.qlink.db.DBUtils;
 
 public class SendEmailState extends AbstractState {
 	private static Logger _log=Logger.getLogger(SendEmailState.class);
+
+	/**
+	 * 
+	 * @uml.property name="_intState"
+	 * @uml.associationEnd multiplicity="(0 1)"
+	 */
 	private QState _intState;
+
 	private String _sRecipient;
 	private int _iToID;
 	private StringBuffer _sbText=new StringBuffer();

@@ -12,8 +12,19 @@ public abstract class AbstractDialogState extends AbstractPhaseState {
 	private static Logger _log=Logger.getLogger(AbstractDialogState.class);
 	public static final int PHASE_ALLOCATE = 2;
 	public static final int PHASE_RESPONSE = 3;
-	
+
+	/**
+	 * 
+	 * @uml.property name="_dialog"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	protected AbstractDialog _dialog;
+
+	/**
+	 * 
+	 * @uml.property name="_callback"
+	 * @uml.associationEnd multiplicity="(1 1)"
+	 */
 	protected DialogCallBack _callback;
 
 	public AbstractDialogState(QServer server, AbstractDialog d, DialogCallBack callback) {

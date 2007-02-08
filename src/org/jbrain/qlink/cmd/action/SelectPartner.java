@@ -23,15 +23,17 @@
  */
 package org.jbrain.qlink.cmd.action;
 
-import org.jbrain.qlink.cmd.Command;
+import org.jbrain.qlink.cmd.CRCException;
 
+public class SelectPartner extends AbstractStringAction {
 
-public interface Action extends Command {
-
-	/**
-	 * 
-	 * @uml.property name="action" multiplicity="(0 1)"
-	 */
-	public String getAction();
-
+	public static final String MNEMONIC="PN";
+	
+	public SelectPartner(byte[] b, int start, int len) throws CRCException {
+		super(b,start,len);
+	}
+	
+	public String getHandle() {
+		return _sData;
+	}
 }
