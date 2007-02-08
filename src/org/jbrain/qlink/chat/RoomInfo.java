@@ -27,16 +27,16 @@ package org.jbrain.qlink.chat;
 public class RoomInfo {
 
 	private String _sName;
-	private int _iNum;
+	private int _iPopulation;
 	private boolean _bPublic;
 
 	/**
 	 * @param name
 	 * @param population
 	 */
-	public RoomInfo(String name, int population, boolean bPublic) {
+	public RoomInfo(String name, int pop, boolean bPublic) {
 		_sName=name;
-		_iNum=population;
+		_iPopulation=pop;
 		_bPublic=bPublic;
 	}
 
@@ -51,7 +51,7 @@ public class RoomInfo {
 	 * @return
 	 */
 	public int getPopulation() {
-		return _iNum;
+		return _iPopulation;
 	}
 
 	/**

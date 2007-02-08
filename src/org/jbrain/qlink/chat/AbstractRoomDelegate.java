@@ -29,12 +29,13 @@ import org.apache.log4j.Logger;
 import org.jbrain.qlink.user.QHandle;
 import org.jbrain.qlink.util.QuotedStringTokenizer;
 
-public abstract class AbstractRoomDelegate implements QRoom {
+public abstract class AbstractRoomDelegate implements QRoomDelegate {
 	private static Logger _log=Logger.getLogger(AbstractRoomDelegate.class);
 	protected static final String SYS_NAME="System";
 	private String _sName;
 	//private SeatInfo[] _users = new SeatInfo[ROOM_CAPACITY];
 	protected Hashtable _htUsers = new Hashtable();
+	protected Hashtable _htAdmins = new Hashtable();
 	protected ArrayList _listeners = new ArrayList();
 	private boolean _bPublic;
 	private boolean _bLocked;
@@ -85,9 +86,11 @@ public abstract class AbstractRoomDelegate implements QRoom {
 	/**
 	 * @return
 	 */
+	
 	public int getPopulation() {
 		if(_log.isDebugEnabled())
 			_log.debug("Population of '" + _sName + "' is " + _htUsers.size());
+		// synchronized on the table.
 		return _htUsers.size();
 	}
 
@@ -95,7 +98,8 @@ public abstract class AbstractRoomDelegate implements QRoom {
 	 * @return
 	 */
 	public boolean isLocked() {
-		return _bLocked;
+		// if there are admins monitoring, do not remove room.
+		return _bLocked || (_htAdmins.size()>0);
 	}
 
 	/**
@@ -117,6 +121,12 @@ public abstract class AbstractRoomDelegate implements QRoom {
 	 */
 	public abstract int getCapacity();
 
+	public boolean addAdminUser(QHandle handle, ChatProfile security) {
+		if(_htAdmins.get(handle.getKey())==null) 
+			_htAdmins.put(handle.getKey(),new SeatInfo(handle,-1,security));
+		return true;
+	}
+	
 	public synchronized void removeEventListener(RoomEventListener listener) {
 		if(_listeners.contains(listener)) {
 			_listeners.remove(listener);
@@ -130,9 +140,16 @@ public abstract class AbstractRoomDelegate implements QRoom {
 	public String getInfo() {
 		return "";
 	}
-
-	public void say(QSeat info, String text) {
-		if(info!=null && !info.isIgnored() && isInRoom(info)) {
+	
+	public void say(QHandle handle, String text) {
+		QSeat info=getSeatInfo(handle);
+		if(info==null) {
+			// maybe it is an admin?
+			info=getAdminSeatInfo(handle);
+		}
+		if(info==null) {
+			_log.error("We did not find seat information for: " + handle);
+		} else if(!info.isIgnored()) {
 			if(text.startsWith("//") || text.startsWith("=q")) {
 				processCommand((SeatInfo)info,text.substring(2));
 			} else {
@@ -164,35 +181,53 @@ public abstract class AbstractRoomDelegate implements QRoom {
 		return (QSeat)_htUsers.get(handle.getKey());
 	}
 
-	public void removeUser(QSeat user) {
+	/**
+	 * @param handle
+	 * @return
+	 */
+	private QSeat getAdminSeatInfo(QHandle handle) {
+		return (QSeat)_htAdmins.get(handle.getKey());
+	}
+
+	public void leave(QHandle handle) {
 		synchronized(_htUsers) {
+			QSeat seat=getSeatInfo(handle);
 			// was this seat filled?
-			if(isInRoom(user)) {
-				leaveSeat(user);
+			if(seat!=null) {
+				leaveSeat(seat);
 			}
 		}
+		// was this an admin user?
+		if(_htAdmins.get(handle.getKey())!=null)
+			_htAdmins.remove(handle.getKey());
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.QRoom#changeUserName(org.jbrain.qlink.chat.QSeat, org.jbrain.qlink.user.QHandle)
+	 * @see org.jbrain.qlink.chat.QRoomDelegate#changeUserName(org.jbrain.qlink.chat.QSeat, org.jbrain.qlink.user.QHandle)
 	 */
-	public QSeat changeUserName(QSeat user, QHandle handle, ChatProfile profile) {
-		if(isInRoom(user)) {
-			SeatInfo info=(SeatInfo)user;
+	public boolean changeUserName(QHandle oldHandle, QHandle handle, ChatProfile profile) {
+		QSeat seat=getSeatInfo(oldHandle);
+		if(seat!=null) {
+			SeatInfo info=(SeatInfo)seat;
 			if(!info.isInGame()) {
-				leaveSeat(user);
-				SeatInfo newUser=new SeatInfo(handle,user.getSeatID(),profile);
-				newUser.setIgnore(user.isIgnored());
+				leaveSeat(seat);
+				SeatInfo newUser=new SeatInfo(handle,seat.getSeatID(),profile);
+				newUser.setIgnore(seat.isIgnored());
 				takeSeat(newUser);
-				return newUser;
+				return true;
 			}
-		} return null;
+		} return false;
+	}
+	
+	public boolean canTalk() {
+		return true;
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.QRoom#close()
+	 * @see org.jbrain.qlink.chat.QRoomDelegate#close()
 	 */
 	public void close() {
+		_log.debug("Removing room: " + _sName);
 		// empty
 	}
 
@@ -221,6 +256,8 @@ public abstract class AbstractRoomDelegate implements QRoom {
 		return pos;
 	}
 
+	// this must be sycnchronized on the instance, as the facades syncrhonize on the room instance to prevent adds while getting
+	// the seat list.
 	protected synchronized void processEvent(RoomEvent event) {
 		if(event instanceof JoinEvent) 
 			processJoinEvent((JoinEvent)event);
@@ -230,7 +267,7 @@ public abstract class AbstractRoomDelegate implements QRoom {
 			processSystemMessageEvent((SystemMessageEvent)event);
 	}
 
-	protected synchronized void processJoinEvent(JoinEvent event) {
+	protected void processJoinEvent(JoinEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			if(event.getType()==JoinEvent.EVENT_JOIN)
 				for(int i=0,size=_listeners.size();i<size;i++) {
@@ -243,7 +280,7 @@ public abstract class AbstractRoomDelegate implements QRoom {
 		}
 	}
 
-	protected synchronized void processQuestionStateEvent(QuestionStateEvent event) {
+	protected void processQuestionStateEvent(QuestionStateEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			if(event.getType()==QuestionStateEvent.ACCEPTING_QUESTIONS)
 				for(int i=0,size=_listeners.size();i<size;i++) {
@@ -256,7 +293,7 @@ public abstract class AbstractRoomDelegate implements QRoom {
 		}
 	}
 
-	protected synchronized void processSystemMessageEvent(SystemMessageEvent event) {
+	protected void processSystemMessageEvent(SystemMessageEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			for(int i=0,size=_listeners.size();i<size;i++) {
 				((RoomEventListener)_listeners.get(i)).systemSent(event);
@@ -264,7 +301,7 @@ public abstract class AbstractRoomDelegate implements QRoom {
 		}
 	}
 
-	protected synchronized void processChatEvent(ChatEvent event) {
+	protected void processChatEvent(ChatEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			for(int i=0,size=_listeners.size();i<size;i++) {
 				((RoomEventListener)_listeners.get(i)).userSaid(event);
@@ -318,6 +355,15 @@ public abstract class AbstractRoomDelegate implements QRoom {
 						_log.debug("User tried to gag unknown user '" + handle + "'");
 						error="Error: User not in room";
 					}
+				}
+			} else if(cmd.startsWith("say") && info.getProfile().isEnabled("room.say.anon")) {
+				// ungag user;
+				if(st.hasMoreTokens())
+					name=st.nextToken(" ");
+				if(st.hasMoreTokens())
+					msg=st.nextToken("\n");
+				if(name!= null && msg!=null) {
+					send(new ChatEvent(this,-1,name,msg));
 				}
 			} else if(cmd.startsWith("vio") && info.getProfile().isEnabled("tos.warning")) {
 				send(new ChatEvent(this,-1,SYS_NAME,"You are violating the Q-Link Terms of Service. Please STOP NOW!"));
@@ -377,13 +423,6 @@ public abstract class AbstractRoomDelegate implements QRoom {
 		}
 	}
 
-	/**
-	 * @param user
-	 * @return
-	 */
-	protected boolean isInRoom(QSeat user) {
-		return _htUsers.containsValue(user);
-	}
 
 	/**
 	 * @param user

@@ -41,12 +41,14 @@ public abstract class AbstractChatState extends AbstractState {
 	private static ChatProfile _staffProfile=new ChatProfile();
 	private static ChatProfile _normalProfile=new ChatProfile();
 	protected static RoomManager _mgr=RoomManager.getRoomManager();
-	protected Room _room=null;
+	protected QRoom _room=null;
 	protected QueuedChatEventListener _listener;
 
 	static {
 		_staffProfile.setEntry("room.user.gag",true);
 		_staffProfile.setEntry("tos.warning",true);
+		_staffProfile.setEntry("room.say.anon",true);
+		
 	}
 	
 	
@@ -250,21 +252,26 @@ public abstract class AbstractChatState extends AbstractState {
 						_session.send(new Test(name));
 					}
 				} else if(cmd.startsWith("nick")) {
-					// Change user name;
-					if(st.hasMoreTokens())
-						name=st.nextToken("\n");
-					if(name!= null) {
-						handle=new QHandle(name);
-						AccountInfo info=UserManager.getAccount(handle);
-						if(info!=null && info.getUserID()==_session.getUserID()) {
-							_log.debug("Changing user name from '" + _session.getHandle() + "' to '" + info.getHandle()+ "'");
-							if(_room.changeUserName(info.getHandle(),getProfile(info)))
-								_session.setAccountInfo(info);
-							else
-								error="Could not change user name";
-						} else {
-							error="Invalid handle '" + name + "'";
+					QSeat seat=_room.getSeatInfo(_session.getHandle());
+					if(seat != null && !seat.isInGame()) {
+						// Change user name;
+						if(st.hasMoreTokens())
+							name=st.nextToken("\n");
+						if(name!= null) {
+							handle=new QHandle(name);
+							AccountInfo info=UserManager.getAccount(handle);
+							if(info!=null && info.getUserID()==_session.getUserID()) {
+								_log.debug("Changing user name from '" + _session.getHandle() + "' to '" + info.getHandle()+ "'");
+								if(_room.changeUserName(info.getHandle(),getProfile(info)))
+									_session.setAccountInfo(info);
+								else
+									error="Could not change user name";
+							} else {
+								error="Invalid handle '" + name + "'";
+							}
 						}
+					} else {
+						error="Cannot change user names while in a game";
 					}
 				//} else if(cmd.startsWith("join")) {
 				//	_log.debug("Entering public room");
@@ -322,7 +329,7 @@ public abstract class AbstractChatState extends AbstractState {
 	 */
 	protected void showSeats(QSeat[] seats, boolean bRoomChange) {
 		QSeat user;
-		int mySeat=0;
+		int mySeat=-1;
 	
 		_log.debug("Sending seat information");
 		for(int i=0,size=seats.length;i<size;i++) {
@@ -335,7 +342,10 @@ public abstract class AbstractChatState extends AbstractState {
 			else
 				mySeat=user.getSeatID();
 		}
-		_session.send(new CE(mySeat,_session.getHandle().toString()));
+		if(mySeat>-1)
+			_session.send(new CE(mySeat,_session.getHandle().toString()));
+		else
+			_session.send(new CE(23,_session.getHandle().toString()));
 		_listener.resume();
 		if(!bRoomChange && checkEmail())
 			_session.send(new NewMail());
@@ -362,7 +372,7 @@ public abstract class AbstractChatState extends AbstractState {
 		}
 		if(sb.length()>2)
 			l.add(sb.toString());
-		l.add("End of Room List - Press F5 to go on.");
+		l.add("End of QRoom List - Press F5 to go on.");
 		_session.sendOLM((String[])l.toArray(new String[0]));
 	}
 

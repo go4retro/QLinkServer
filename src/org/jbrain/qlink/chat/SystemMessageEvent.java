@@ -31,7 +31,7 @@ public class SystemMessageEvent extends EventObject implements RoomEvent {
 	private String[] _msg;
 	public static int SEAT_BROADCAST=-1;
 
-	public SystemMessageEvent(QRoom room, int seatID, String name, String[] msg) {
+	public SystemMessageEvent(QRoomDelegate room, int seatID, String name, String[] msg) {
 		super(room);
 		_seat=seatID;
 		_name=name;

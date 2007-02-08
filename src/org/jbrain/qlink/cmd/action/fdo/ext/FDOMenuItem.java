@@ -39,7 +39,7 @@ public class FDOMenuItem extends AbstractFDOCommand {
 	public static final FDOMenuItem PRIVATE_ROOM=new FDOMenuItem("Enter private room",FDOSelectItemResponse.PRIVATE_ROOM);
 	public static final FDOMenuItem SEND_OLM=new FDOMenuItem("Send OLM",FDOSelectItemResponse.SEND_OLM);
 	public static final FDOMenuItem OLM_MENU=new FDOMenuItem("OLM Menu",FDOSelectItemResponse.OLM_MENU);
-	public static final FDOMenuItem CHANGE_ROOM=new FDOMenuItem("Room Menu",FDOSelectItemResponse.CHANGE_ROOM);
+	public static final FDOMenuItem CHANGE_ROOM=new FDOMenuItem("QRoom Menu",FDOSelectItemResponse.CHANGE_ROOM);
 	public static final FDOMenuItem PLAY_MUSIC=new FDOMenuItem("Play a SID File",FDOSelectItemResponse.PLAY_MUSIC);
 	public static final FDOMenuItem SEND_EMAIL=new FDOMenuItem("Send E-Mail to someone's mailbox",FDOSelectItemResponse.SEND_EMAIL);
 	//public static final FDOMenuItem COMPLETED=new FDOMenuItem("Completed",FDOSelectItemResponse.COMPLETED);

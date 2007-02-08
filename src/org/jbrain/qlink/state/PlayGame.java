@@ -55,7 +55,7 @@ public class PlayGame extends AbstractPhaseState {
 	 * @uml.property name="_room"
 	 * @uml.associationEnd multiplicity="(0 1)"
 	 */
-	private Room _room;
+	private QRoom _room;
 
 	/**
 	 * 
@@ -245,7 +245,7 @@ public class PlayGame extends AbstractPhaseState {
 		_session.enableOLMs(true);
 	}
 
-	public PlayGame(QSession session, Room room, int id, String name, String type, boolean bSystemPickOrder) {
+	public PlayGame(QSession session, QRoom room, int id, String name, String type, boolean bSystemPickOrder) {
 		super(session, PHASE_INVITE);
 		_bSystemPickOrder=bSystemPickOrder;
 		_sType=type;

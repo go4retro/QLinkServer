@@ -23,22 +23,24 @@
  */
 package org.jbrain.qlink.chat;
 
+import org.jbrain.qlink.user.QHandle;
+
 public class NormalRoom extends AbstractRoom{
 
 	/**
 	 * @param room
-	 * @param user
+	 * @param handle
 	 */
-	public NormalRoom(QRoom room, QSeat user) {
-		super(room,user);
+	public NormalRoom(QRoomDelegate room, QHandle handle) {
+		super(room,handle);
 	}
 
 	public void say(String text) {
-		_room.say(_user,text);
+		_room.say(_handle,text);
 	}
 	
 	public void leave() {
-		RoomManager.getRoomManager().leaveRoom(_room,_user);
+		RoomManager.getRoomManager().leaveRoom(_room,_handle);
 		super.leave();
 	}
 
@@ -53,35 +55,35 @@ public class NormalRoom extends AbstractRoom{
 	 * @return
 	 */
 	public synchronized QSeat[] getSeatInfoList() {
-		return _room.getSeatInfoList(_user);
+		return _room.getSeatInfoList(_handle);
 	}
 
 	
 	public Game createGame(int id, String name, String type, boolean systemPickOrder) {
-		return new Game(_room,_user,_room.createGame(id,name,type,systemPickOrder));
+		return new Game(_room,_handle,_room.createGame(id,name,type,systemPickOrder));
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#getPendingGame()
+	 * @see org.jbrain.qlink.chat.QRoom#getPendingGame()
 	 */
 	public Game getPendingGame() {
-		GameDelegate game=_room.getGame(_user);
+		GameDelegate game=_room.getGame(_handle);
 		if(game!=null)
-			return new Game(_room,_user,game);
+			return new Game(_room,_handle,game);
 		return null;
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#getInfo()
+	 * @see org.jbrain.qlink.chat.QRoom#getInfo()
 	 */
 	public String getInfo() {
 		return _room.getInfo();
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#getExtSeatInfoList()
+	 * @see org.jbrain.qlink.chat.QRoom#getExtSeatInfoList()
 	 */
 	public QSeat[] getExtSeatInfoList() {
-		return _room.getExtSeatInfoList(_user);
+		return _room.getExtSeatInfoList(_handle);
 	}
 }

@@ -27,10 +27,10 @@ import java.util.ArrayList;
 
 import org.jbrain.qlink.user.QHandle;
 
-public abstract class AbstractRoom implements Room {
+public abstract class AbstractRoom implements QRoom {
 
-	protected QRoom _room;
-	protected QSeat _user;
+	protected QRoomDelegate _room;
+	protected QHandle _handle;
 	private ArrayList _listeners = new ArrayList();
 	private RoomEventListener _listener = new RoomEventListener() {
 		public void userSaid(ChatEvent event) {
@@ -55,11 +55,11 @@ public abstract class AbstractRoom implements Room {
 
 	/**
 	 * @param room
-	 * @param user
+	 * @param handle
 	 */
-	public AbstractRoom(QRoom room, QSeat user) {
+	public AbstractRoom(QRoomDelegate room, QHandle handle) {
 		_room=room;
-		_user=user;
+		_handle=handle;
 		_room.addEventListener(_listener);
 	}
 
@@ -73,7 +73,7 @@ public abstract class AbstractRoom implements Room {
 	/**
 	 * @return
 	 */
-	public synchronized int getPopulation() {
+	public int getPopulation() {
 		return _room.getPopulation();
 	}
 
@@ -100,7 +100,7 @@ public abstract class AbstractRoom implements Room {
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#getSeatInfo(java.lang.String)
+	 * @see org.jbrain.qlink.chat.QRoom#getSeatInfo(java.lang.String)
 	 */
 	public QSeat getSeatInfo(QHandle handle) {
 		return _room.getSeatInfo(handle);
@@ -115,16 +115,29 @@ public abstract class AbstractRoom implements Room {
 	public abstract void say(String[] text);
 
 	public boolean changeUserName(QHandle handle,ChatProfile profile) {
-		QSeat user=_room.changeUserName(_user,handle,profile);
-		if(user!=null) {
-			_user=user;
-			return true;
-		}
-		return false;
-		
-		
+		boolean b=_room.changeUserName(_handle,handle,profile);
+		if(b)
+			_handle=handle;
+		return b;
 	}
-	protected synchronized void processJoinEvent(JoinEvent event) {
+	
+	public boolean canTalk() {
+		return _room.canTalk();
+	}
+
+	protected synchronized void processEvent(RoomEvent event) {
+		if(event instanceof JoinEvent) 
+			processJoinEvent((JoinEvent)event);
+		else if(event instanceof ChatEvent) 
+			processChatEvent((ChatEvent)event);
+		else if(event instanceof SystemMessageEvent) 
+			processSystemMessageEvent((SystemMessageEvent)event);
+		else if(event instanceof QuestionStateEvent) 
+			processQuestionStateEvent((QuestionStateEvent)event);
+	}
+	
+	
+	protected void processJoinEvent(JoinEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			if(event.getType()==JoinEvent.EVENT_JOIN)
 				for(int i=0,size=_listeners.size();i<size;i++) {
@@ -137,7 +150,7 @@ public abstract class AbstractRoom implements Room {
 		}
 	}
 
-	protected synchronized void processQuestionStateEvent(QuestionStateEvent event) {
+	protected void processQuestionStateEvent(QuestionStateEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			if(event.getType()==QuestionStateEvent.ACCEPTING_QUESTIONS)
 				for(int i=0,size=_listeners.size();i<size;i++) {
@@ -150,7 +163,7 @@ public abstract class AbstractRoom implements Room {
 		}
 	}
 
-	protected synchronized void processChatEvent(ChatEvent event) {
+	protected void processChatEvent(ChatEvent event) {
 		if(event != null && _listeners.size() > 0) {
 			for(int i=0,size=_listeners.size();i<size;i++) {
 				((RoomEventListener)_listeners.get(i)).userSaid(event);
@@ -158,25 +171,14 @@ public abstract class AbstractRoom implements Room {
 		}
 	}
 
-	protected synchronized void processSystemMessageEvent(SystemMessageEvent event) {
-		if(event.getName().equals("") || _user.getHandle().toString().equals(event.getName())) {
+	protected void processSystemMessageEvent(SystemMessageEvent event) {
+		if(event.getName().equals("") || _handle.toString().equals(event.getName())) {
 			if(event != null && _listeners.size() > 0) {
 				for(int i=0,size=_listeners.size();i<size;i++) {
 						((RoomEventListener)_listeners.get(i)).systemSent(event);
 				}
 			}
 		}
-	}
-
-	protected synchronized void processEvent(RoomEvent event) {
-		if(event instanceof JoinEvent) 
-			processJoinEvent((JoinEvent)event);
-		else if(event instanceof ChatEvent) 
-			processChatEvent((ChatEvent)event);
-		else if(event instanceof SystemMessageEvent) 
-			processSystemMessageEvent((SystemMessageEvent)event);
-		else if(event instanceof QuestionStateEvent) 
-			processQuestionStateEvent((QuestionStateEvent)event);
 	}
 	
 }

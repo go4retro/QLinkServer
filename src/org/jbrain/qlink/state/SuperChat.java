@@ -113,7 +113,7 @@ public class SuperChat extends Chat {
 	}
 	
 	protected void showSeats(QSeat[] seats, boolean b) {
-		// in SuperQ/MC, you have to send the Room name and your seat number all the time.
+		// in SuperQ/MC, you have to send the QRoom name and your seat number all the time.
 		int seat=_room.getSeatInfo(_session.getHandle()).getSeatID();
 		_session.send(new EnterExtRoom(ID_MAIN_MENU,seat,_room.getName()));
 		super.showSeats(seats,b);

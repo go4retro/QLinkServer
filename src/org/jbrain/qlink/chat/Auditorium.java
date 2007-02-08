@@ -23,14 +23,16 @@
  */
 package org.jbrain.qlink.chat;
 
+import org.jbrain.qlink.user.QHandle;
+
 public class Auditorium extends AbstractRoom {
 
-	public Auditorium(AuditoriumDelegate room, QSeat user) {
-		super(room,user);		
+	public Auditorium(AuditoriumDelegate room, QHandle handle) {
+		super(room,handle);		
 }
 
 	public void say(String[] text) {
-		((AuditoriumDelegate)_room).queue(_user.getHandle(),text);
+		((AuditoriumDelegate)_room).queue(_handle,text);
 	}
 
 	public void say(String text) {
@@ -40,50 +42,50 @@ public class Auditorium extends AbstractRoom {
 	}
 	
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#createGame(java.lang.String, java.lang.String, boolean)
+	 * @see org.jbrain.qlink.chat.QRoom#createGame(java.lang.String, java.lang.String, boolean)
 	 */
 	public Game createGame(int id,String name, String type, boolean systemPickOrder) {
 		return null;
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#getPendingGame()
+	 * @see org.jbrain.qlink.chat.QRoom#getPendingGame()
 	 */
 	public Game getPendingGame() {
 		return null;
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#getInfo()
+	 * @see org.jbrain.qlink.chat.QRoom#getInfo()
 	 */
 	public String getInfo() {
 		return _room.getInfo();
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#getSeatInfoList()
+	 * @see org.jbrain.qlink.chat.QRoom#getSeatInfoList()
 	 */
 	public QSeat[] getSeatInfoList() {
-		return _room.getSeatInfoList(_user);
+		return _room.getSeatInfoList(_handle);
 		
 	}
 
 	/**
 	 * @return
 	 */
-	public boolean isAcceptingQuestions() {
-		return ((AuditoriumDelegate)_room).isAcceptingQuestions();
+	public boolean canTalk() {
+		return _room.canTalk();
 	}
 
 	public void leave() {
-		RoomManager.leaveAuditorium(_user.getHandle());
+		RoomManager.getRoomManager().leaveAuditorium(_handle);
 		super.leave();
 	}
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.Room#getExtSeatInfoList()
+	 * @see org.jbrain.qlink.chat.QRoom#getExtSeatInfoList()
 	 */
 	public QSeat[] getExtSeatInfoList() {
-		return _room.getSeatInfoList(_user);
+		return _room.getSeatInfoList(_handle);
 	}
 }

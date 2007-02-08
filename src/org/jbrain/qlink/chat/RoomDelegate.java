@@ -65,7 +65,7 @@ public class RoomDelegate extends AbstractRoomDelegate {
 		return ROOM_CAPACITY;
 	}
 
-	public QSeat[] getSeatInfoList(QSeat seat) {
+	public QSeat[] getSeatInfoList(QHandle handle) {
 		return (SeatInfo[])_htUsers.values().toArray(new SeatInfo[0]);
 	
 	}
@@ -88,6 +88,13 @@ public class RoomDelegate extends AbstractRoomDelegate {
 		return info;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.QRoomDelegate#getExtSeatInfoList()
+	 */
+	public QSeat[] getExtSeatInfoList(QHandle handle) {
+		return getSeatInfoList(handle);
+	}
+
 	/**
 	 * @param delegate
 	 */
@@ -104,9 +111,10 @@ public class RoomDelegate extends AbstractRoomDelegate {
 		}
 	}
 
-	public GameDelegate getGame(QSeat user) {
-		if(isInRoom(user))
-			return _userGame[user.getSeatID()];
+	public GameDelegate getGame(QHandle handle) {
+		QSeat seat=getSeatInfo(handle);
+		if(seat!=null)
+			return _userGame[seat.getSeatID()];
 		return null;
 	}
 
@@ -152,7 +160,7 @@ public class RoomDelegate extends AbstractRoomDelegate {
 	/**
 	 * @param handle
 	 */
-	public QSeat addUser(QHandle handle, ChatProfile security) {
+	public boolean addUser(QHandle handle, ChatProfile security) {
 		synchronized(_htUsers) {
 			QSeat user=getSeatInfo(handle);
 			if(user==null) {
@@ -161,30 +169,38 @@ public class RoomDelegate extends AbstractRoomDelegate {
 						if(_users[i]==null) {
 							user=new SeatInfo(handle,i,security);
 							takeSeat(user);
-							return user;
+							return true;
 						}
 					}
 				}
-				return null;
+				return false;
 			} else {
 				if(_log.isDebugEnabled())
 					_log.warn("'" + handle + "' is already in room: " + getName());
-				return user;
+				return true;
 			}
 		}
 	}
 
-	public void removeUser(QSeat user) {
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.QRoomDelegate#isManagedRoom()
+	 */
+	public boolean isManagedRoom() {
+		return true;
+	}
+
+	public void leave(QHandle handle) {
 		synchronized(_htUsers) {
+			QSeat seat=getSeatInfo(handle);
 			// was this seat filled?
-			if(isInRoom(user)) {
+			if(seat!=null) {
 				// are they in a game?
-				if(_userGame[user.getSeatID()]!= null) {
-					_userGame[user.getSeatID()].leave(user);
+				if(_userGame[seat.getSeatID()]!= null) {
+					_userGame[seat.getSeatID()].leave(handle);
 				}
-				super.removeUser(user);
 			}
 		}
+		super.leave(handle);
 	}
 
 	/**
@@ -209,20 +225,6 @@ public class RoomDelegate extends AbstractRoomDelegate {
 	protected void send(RoomEvent event) {
 		// no outside integration, so loop.
 		processEvent(event);
-	}
-
-	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.QRoom#getExtSeatInfoList()
-	 */
-	public QSeat[] getExtSeatInfoList(QSeat user) {
-		return getSeatInfoList(user);
-	}
-
-	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.QRoom#isManagedRoom()
-	 */
-	public boolean isManagedRoom() {
-		return true;
 	}
 
 }

@@ -35,6 +35,7 @@ import org.jbrain.qlink.text.TextFormatter;
 import org.jbrain.qlink.user.AccountInfo;
 import org.jbrain.qlink.user.QHandle;
 import org.jbrain.qlink.user.UserManager;
+import org.jbrain.qlink.util.QuotedStringTokenizer;
 
 public class Chat extends AbstractChatState {
 	private static Logger _log=Logger.getLogger(Chat.class);
@@ -229,16 +230,24 @@ public class Chat extends AbstractChatState {
 	 */
 	
 	protected void enterRoom(String name, boolean b) {
-		Room room;
+		QRoom room;
 		QSeat user;
 		int mySeat=0;
 		QSeat[] seats;
 		
-		if(!_room.getName().toLowerCase().equals(name.toLowerCase()) && _room.isPublicRoom()==b) {
+		if(_room.getName().toLowerCase().equals(name.toLowerCase()) && _room.isPublicRoom()==b) {
+			_log.debug("User changed to same room");
+			synchronized(_room) {
+				_listener.suspend();
+				_log.debug("Getting seat information");
+				seats=_room.getSeatInfoList();
+			}
+			showSeats(seats,true);
 			_log.debug("Joining room: " + name);
+		} else {
 			room=_mgr.joinRoom(name,_session.getHandle(),getProfile(_session.getAccountInfo()),b);
 			if(room==null) {
-				_log.debug("Room is full");
+				_log.debug("QRoom is full");
 				// send room is full.
 				_session.send(new C2());
 			} else {
@@ -248,6 +257,24 @@ public class Chat extends AbstractChatState {
 				seats=addListener();
 				showSeats(seats,true);
 			}
+		}
+	}
+	
+	protected void monitorRoom(String name, boolean b) {
+		QRoom room;
+		QSeat user;
+		int mySeat=0;
+		QSeat[] seats;
+		
+		if(!_room.getName().toLowerCase().equals(name.toLowerCase()) && _room.isPublicRoom()==b) {
+			_log.debug("Monitoring room: " + name);
+			room=_mgr.monitorRoom(name,_session.getHandle(),getProfile(_session.getAccountInfo()),b);
+			leaveRoom();
+			// enter new room
+			_room=room;
+			seats=addListener();
+			showSeats(seats,true);
+			
 		} else {
 			_log.debug("User changed to same room");
 			synchronized(_room) {
@@ -256,6 +283,36 @@ public class Chat extends AbstractChatState {
 				seats=_room.getSeatInfoList();
 			}
 			showSeats(seats,true);
+		}
+	}
+	
+	protected void process(String text) throws IOException {
+		QHandle handle;
+			
+		if(text.startsWith("//") || text.startsWith("=q")) {
+			// do //msg and //join here.
+			String[] olm;
+			String name=null,msg=null, error=null;
+			if(text.length()>2) {
+				QuotedStringTokenizer st=new QuotedStringTokenizer(text.substring(2));
+				String cmd=st.nextToken(" ").toLowerCase();
+				int pos=0;
+				if(cmd.startsWith("mon") && _session.isStaff()) {
+					// Monitor room;
+					if(st.hasMoreTokens())
+						name=st.nextToken("\n");
+					if(name!= null) {
+						_log.debug("Monitoring '" + name + "' public room ");
+						monitorRoom(name,true);
+					}
+				} else {
+					super.process(text);
+				}
+			} else {
+				super.process(text);
+			}
+		} else {
+			_room.say(text);
 		}
 	}
 	
@@ -289,7 +346,7 @@ public class Chat extends AbstractChatState {
 		seats=addListener();
 		sendRoomInfo(seats);
 		sendAuditoriumText();
-		if(((Auditorium)_room).isAcceptingQuestions())
+		if(_room.canTalk())
 			_session.send(new AcceptingQuestions());
 		else
 			_session.send(new RejectingQuestions());

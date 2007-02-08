@@ -43,7 +43,7 @@ public class EnterExtRoom extends AbstractAction {
 		if(_sRoom==null)
 			throw new NullPointerException("Null room name");
 		if(_sRoom.length()>20)
-			throw new IllegalArgumentException("Room name length > 20");
+			throw new IllegalArgumentException("QRoom name length > 20");
 	}
 	
 	public EnterExtRoom(int id, int seat, String name) {

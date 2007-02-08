@@ -66,7 +66,7 @@ class AuditoriumDelegate extends RoomDelegate {
 	private boolean _bAcceptingQuestions = false;
 	private List _vRegList = new Vector();
 	private AutoText _autoTalk;
-	private List _vViewers = new Vector();
+	private Hashtable _htViewers = new Hashtable();
 	private static final int ID_VIEWER=23;
  
 	class AutoText extends Thread {
@@ -89,7 +89,7 @@ class AuditoriumDelegate extends RoomDelegate {
 		        _log.debug("Reading auditorium text");
 		    	rs=stmt.executeQuery("SELECT delay,text from auditorium_talk WHERE mnemonic LIKE '" + _sKey + "' order by sort_order");
 		    	while(rs.next()) {
-		    		say(_qlink,rs.getString("text"));
+		    		output(_qlink,rs.getString("text"));
 		    		try {
 						Thread.sleep(rs.getInt("delay")*1000);
 					} catch (InterruptedException e) {
@@ -107,13 +107,18 @@ class AuditoriumDelegate extends RoomDelegate {
 		}
 	}
 	
-	public QSeat[] getSeatInfoList(QSeat seat) {
+	public QSeat[] getSeatInfoList(QHandle handle) {
 		// get list of speakers/moderators.
-		QSeat[] seats=super.getSeatInfoList(seat);
-		QSeat[] seats2=new SeatInfo[seats.length+1];
-		System.arraycopy(seats,0,seats2,0,seats.length);
-		seats2[seats.length]=seat;
-		return seats2;
+		QSeat[] seats=super.getSeatInfoList(handle);
+		QSeat seat=(QSeat)_htViewers.get(handle.getKey());
+		if(seat!=null) {
+			QSeat[] seats2=new SeatInfo[seats.length+1];
+			System.arraycopy(seats,0,seats2,0,seats.length);
+			// need to put me in the list.
+			seats2[seats.length]=seat;
+			seats=seats2;
+		}
+		return seats;
 	
 	}
 
@@ -138,12 +143,13 @@ class AuditoriumDelegate extends RoomDelegate {
 		}
 	}
 	
-	public void removeUser(QSeat user) {
-		super.removeUser(user);
-		_vRegList.remove(user);
+	public void leave(QHandle handle) {
+		QSeat seat=getSeatInfo(handle);
+		_vRegList.remove(seat);
+		super.leave(handle);
 	}
 	
-	private void say(QHandle handle,String text) {
+	private void output(QHandle handle,String text) {
 	    TextFormatter tf =new TextFormatter(TextFormatter.FORMAT_PADDED,29);
 	    List l;
 	    String str;
@@ -179,7 +185,6 @@ class AuditoriumDelegate extends RoomDelegate {
 		StringBuffer sb=new StringBuffer();
 		int pos=0;
 		
-		if(isInRoom(seat))
 		if(cmd.startsWith("sho") || cmd.startsWith("air")) {
 			// show
 			if(cmdline.length>1)
@@ -191,7 +196,7 @@ class AuditoriumDelegate extends RoomDelegate {
 					sb.append(q.getQuestion()[i]);
 					sb.append(" ");
 				}
-				say(q.getHandle(),sb.toString());
+				output(q.getHandle(),sb.toString());
 				sb.setLength(0);
 			}
 		} else if(cmd.startsWith("get")) {
@@ -279,7 +284,7 @@ class AuditoriumDelegate extends RoomDelegate {
 	/**
 	 * @return
 	 */
-	public boolean isAcceptingQuestions() {
+	public boolean canTalk() {
 		return _bAcceptingQuestions;
 	}
 
@@ -333,12 +338,13 @@ class AuditoriumDelegate extends RoomDelegate {
 	 * @param handle
 	 */
 	public QSeat addViewer(QHandle handle, ChatProfile profile) {
-		_vViewers.add(handle.getKey());
-		return new SeatInfo(handle,ID_VIEWER,profile);
+		QSeat seat=new SeatInfo(handle,ID_VIEWER,profile);
+		_htViewers.put(handle.getKey(),seat);
+		return seat;
 	}
 	
 	public void removeViewer(QHandle handle) {
-		_vViewers.remove(handle.getKey());
+		_htViewers.remove(handle.getKey());
 	}
 
 	public ObservedGame observeGame(String handle) {

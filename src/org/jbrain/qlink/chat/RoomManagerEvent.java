@@ -31,13 +31,13 @@ public class RoomManagerEvent extends EventObject {
 	public static final int EVENT_ADD=1;
 	public static final int EVENT_REMOVE=2;
 	
-	private QRoom _room;
+	private QRoomDelegate _room;
 	private int _iType;
 
 	/**
 	 * @param arg0
 	 */
-	public RoomManagerEvent(Object arg0, int type, QRoom room) {
+	public RoomManagerEvent(Object arg0, int type, QRoomDelegate room) {
 		super(arg0);
 		_room=room;
 		_iType=type;
@@ -53,7 +53,7 @@ public class RoomManagerEvent extends EventObject {
 	/**
 	 * @return
 	 */
-	public QRoom getRoom() {
+	public QRoomDelegate getRoom() {
 		return _room;
 	}
 

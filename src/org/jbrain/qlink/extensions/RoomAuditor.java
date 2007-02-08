@@ -32,7 +32,7 @@ import org.apache.log4j.Logger;
 import org.jbrain.qlink.QLinkServer;
 import org.jbrain.qlink.chat.ChatEvent;
 import org.jbrain.qlink.chat.JoinEvent;
-import org.jbrain.qlink.chat.QRoom;
+import org.jbrain.qlink.chat.QRoomDelegate;
 import org.jbrain.qlink.chat.QuestionStateEvent;
 import org.jbrain.qlink.chat.RoomEventListener;
 import org.jbrain.qlink.chat.RoomManager;
@@ -83,7 +83,7 @@ public class RoomAuditor {
 	 */
 	public RoomAuditor(QLinkServer server) {
 		super();
-		QRoom room;
+		QRoomDelegate room;
 		// set up listener for room logging.
 		RoomManager mgr=RoomManager.getRoomManager();
 		
@@ -91,7 +91,7 @@ public class RoomAuditor {
 		List l=mgr.getRoomList();
 		for(int i=0;i<l.size();i++) {
 			// add each pre-existing room to the listener.
-			room=(QRoom)l.get(i);
+			room=(QRoomDelegate)l.get(i);
 			room.addEventListener(_roomEventListener);
 			audit(room.getName(),room.isPublicRoom(),-1,"","CREATE","");
 		}

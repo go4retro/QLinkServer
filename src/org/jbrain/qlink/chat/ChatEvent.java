@@ -30,15 +30,15 @@ public class ChatEvent extends EventObject implements RoomEvent {
 	private String _handle;
 	private String _sText;
 
-	public ChatEvent(QRoom obj, int id, String handle, String text) {
+	public ChatEvent(QRoomDelegate obj, int id, String handle, String text) {
 		super(obj);
 		_seat=id;
 		_handle=handle;
 		_sText=text;
 	}
 	
-	public QRoom getRoom() {
-		return (QRoom)getSource();
+	public QRoomDelegate getRoom() {
+		return (QRoomDelegate)getSource();
 	}
 
 	public int getSeatID() {

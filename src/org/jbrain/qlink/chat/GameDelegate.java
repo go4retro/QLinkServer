@@ -38,58 +38,14 @@ public class GameDelegate {
 	private String _sType;
 	private boolean _bSystemPickOrder;
 
-	/**
-	 * 
-	 * @uml.property name="_room"
-	 * @uml.associationEnd inverse="_userGame:org.jbrain.qlink.chat.RoomDelegate" multiplicity=
-	 * "(1 1)"
-	 */
 	private RoomDelegate _room;
-
-	/**
-	 * 
-	 * @uml.property name="_alPlayers"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.SeatInfo" multiplicity="(0
-	 * -1)"
-	 */
 	private ArrayList _alPlayers = new ArrayList();
-
 	private byte[] _seats;
-
-	/**
-	 * 
-	 * @uml.property name="_listeners"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.GameEventListener" multiplicity=
-	 * "(0 -1)"
-	 */
 	private ArrayList _listeners = new ArrayList();
-
 	private int _iID;
-
-	/**
-	 * 
-	 * @uml.property name="_alDeclineList"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.SeatInfo" multiplicity="(0
-	 * -1)"
-	 */
 	private ArrayList _alDeclineList = new ArrayList();
-
-	/**
-	 * 
-	 * @uml.property name="_alAcceptList"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.SeatInfo" multiplicity="(0
-	 * -1)"
-	 */
 	private ArrayList _alAcceptList = new ArrayList();
-
-	/**
-	 * 
-	 * @uml.property name="_alAbstainList"
-	 * @uml.associationEnd elementType="org.jbrain.qlink.chat.SeatInfo" multiplicity="(0
-	 * -1)"
-	 */
 	private ArrayList _alAbstainList = new ArrayList();
-
 	private boolean _bActive=true;
 	private Vector _vGameLog=new Vector();
 
@@ -168,15 +124,17 @@ public class GameDelegate {
 	/**
 	 * 
 	 */
-	public void acceptInvite(QSeat seat) {
-		if(isInGame(seat)) {
+	public void acceptInvite(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			addAccept(seat);
 			processEvent(new GameEvent(this,GameEvent.ACCEPT_INVITE, seat.getSeatID(),seat.getHandle().toString()));
 		}
 	}
 
-	public void declineInvite(QSeat seat) {
-		if(isInGame(seat)) {
+	public void declineInvite(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			addDecline(seat);
 			processEvent(new GameEvent(this,GameEvent.DECLINE_INVITE, seat.getSeatID(),seat.getHandle().toString()));
 		}
@@ -249,11 +207,12 @@ public class GameDelegate {
 	}
 
 	/**
-	 * @param seat
+	 * @param _handle
 	 * @param text
 	 */
-	public void send(QSeat seat, String text) {
-		if(isInGame(seat)) {
+	public void send(QHandle handle, String text) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			GameCommEvent event=new GameCommEvent(this,seat.getSeatID(),seat.getHandle().toString(),text);
 			record(event);
 			processEvent(event);
@@ -261,17 +220,19 @@ public class GameDelegate {
 	}
 
 	/**
-	 * @param seat
+	 * @param _handle
 	 */
-	public void requestLoad(QSeat seat) {
-		if(isInGame(seat)) {
+	public void requestLoad(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			clearVotes();
 			processEvent(new GameEvent(this,GameEvent.REQUEST_LOAD, seat.getSeatID(),seat.getHandle().toString()));
 		}
 	}
 
-	public void readyToStart(QSeat seat) {
-		if(isInGame(seat)) {
+	public void readyToStart(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			addAccept(seat);
 			processEvent(new GameEvent(this,GameEvent.READY_TO_START, seat.getSeatID(),seat.getHandle().toString()));
 		}
@@ -280,8 +241,9 @@ public class GameDelegate {
 	/**
 	 * 
 	 */
-	public void requestRestart(QSeat seat) {
-		if(isInGame(seat)) {
+	public void requestRestart(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			clearVotes();
 			// we alreayd want to restart...
 			addAccept(seat);
@@ -302,10 +264,11 @@ public class GameDelegate {
 	}
 
 	/**
-	 * @param seat
+	 * @param _handle
 	 */
-	public void acceptRestart(QSeat seat) {
-		if(isInGame(seat)) {
+	public void acceptRestart(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			addAccept(seat);
 			processEvent(new GameEvent(this,GameEvent.ACCEPT_RESTART, seat.getSeatID(),seat.getHandle().toString()));
 		}
@@ -322,8 +285,9 @@ public class GameDelegate {
 	 * @param handle
 	 * 
 	 */
-	public void leave(QSeat seat) {
-		if(isInGame(seat)) {
+	public void leave(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			_log.debug("Removing '" + seat.getHandle() + "' from game: " + _sName);
 			removePlayer(seat);
 			processEvent(new GameEvent(this,GameEvent.LEAVE_GAME, seat.getSeatID(),seat.getHandle().toString()));
@@ -341,10 +305,11 @@ public class GameDelegate {
 	}
 
 	/**
-	 * @param seat
+	 * @param _handle
 	 */
-	public void restart(QSeat seat) {
-		if(isInGame(seat)) {
+	public void restart(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			// we need to re-order the players to have this person first.
 			// for now, let's just shift everyone up by 1
 			int i=_seats.length-1;
@@ -372,8 +337,9 @@ public class GameDelegate {
 	/**
 	 * 
 	 */
-	public void start(QSeat seat) {
-		if(isInGame(seat)) {
+	public void start(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			StartGameEvent event=new StartGameEvent(this,seat,getPlayOrder());
 			record(event);
 			processEvent(event);
@@ -381,10 +347,11 @@ public class GameDelegate {
 	}
 
 	/**
-	 * @param seat
+	 * @param _handle
 	 */
-	public void declineRestart(QSeat seat) {
-		if(isInGame(seat)) {
+	public void declineRestart(QHandle handle) {
+		QSeat seat=getGameSeatInfo(handle);
+		if(seat!=null) {
 			addDecline(seat);
 			processEvent(new GameEvent(this,GameEvent.DECLINE_RESTART, seat.getSeatID(),seat.getHandle().toString()));
 		}
@@ -447,10 +414,14 @@ public class GameDelegate {
 	 * @param seat
 	 * @return
 	 */
-	private boolean isInGame(QSeat seat) {
-		return _alPlayers.contains(seat);
+	
+	private QSeat getGameSeatInfo(QHandle handle) {
+		QSeat seat=_room.getSeatInfo(handle);
+		if(seat!=null && _alPlayers.contains(seat))
+			return seat;
+		return null;
 	}
-
+	
 	/**
 	 * @param seat
 	 */

@@ -35,7 +35,7 @@ import org.jbrain.qlink.user.QHandle;
 public class ObserveGame extends AbstractState {
 	private static Logger _log=Logger.getLogger(ObserveGame.class);
 	private QState _intState;
-	private Room _room;
+	private QRoom _room;
 	private ObservedGame _game;
 	private QHandle _handle;
 	private int _iSeat;
@@ -131,7 +131,7 @@ public class ObserveGame extends AbstractState {
 	};
 
 	private QueuedGameListener _listener=new QueuedGameListener();
-	public ObserveGame(QSession session, Room room, QHandle handle) {
+	public ObserveGame(QSession session, QRoom room, QHandle handle) {
 		super(session);
 		_room=room;
 		_handle=handle;

@@ -41,8 +41,7 @@ import f00f.net.irc.martyr.services.*;
 
 public class IRCRoomDelegate extends AbstractRoomDelegate {
 	private static Logger _log=Logger.getLogger(IRCRoomDelegate.class);
-	//private static String SERVER_DNS = "localhost";
-	private static String SERVER_DNS = "irc.eskimo.com";
+	private static String SERVER_DNS;
 	private static String SERVER_NICK="Q-Link";
 	private static IRCConnection _ircConn=null;
     private static AutoReconnect _autoReconnect;
@@ -54,6 +53,12 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 	private String _sChannel;
 	protected static boolean _bConnected;
 	protected boolean _bJoined;
+	
+	static {
+		SERVER_DNS=System.getProperty("qlink.chat.irc.server");
+		if(SERVER_DNS==null || SERVER_DNS.equals(""))
+			SERVER_DNS="localhost";
+	}
 	
     class ConnectThread extends Thread
     {
@@ -114,6 +119,9 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 	            connect();
 	        }
 		}
+		if(_htRooms.containsKey(_sChannel)) {
+			_log.error("We already have an IRC room for: " + _sChannel);
+		}
 		_htRooms.put(_sChannel,this);
 		_autoJoin = new AutoJoin( _ircConn, _sChannel );
 	}
@@ -128,27 +136,24 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.QRoom#addUser(org.jbrain.qlink.user.QHandle, org.jbrain.qlink.chat.ChatProfile)
+	 * @see org.jbrain.qlink.chat.QRoomDelegate#addUser(org.jbrain.qlink.user.QHandle, org.jbrain.qlink.chat.ChatProfile)
 	 */
-	public QSeat addUser(QHandle handle, ChatProfile security) {
+	public boolean addUser(QHandle handle, ChatProfile security) {
 		SeatInfo seat=new SeatInfo(handle,-1,security);
 		takeSeat(seat);
-		return seat;
+		return true;
 	}
 
 
-	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.QRoom#removeUser(org.jbrain.qlink.chat.QSeat)
-	 */
-	public void removeUser(QSeat user) {
-		if(isInRoom(user))
-			leaveSeat(user);
-	}
-
-
-	public QSeat[] getSeatInfoList(QSeat seat) {
-		SeatInfo[] seats=new SeatInfo[1];
-		seats[0]=new SeatInfo(seat.getHandle(),0,((SeatInfo)seat).getProfile());
+	public QSeat[] getSeatInfoList(QHandle handle) {
+		QSeat[] seats=new QSeat[1];
+		QSeat seat=getSeatInfo(handle);
+		if(seat!=null)
+			seats[0]=seat;
+		else {
+			_log.error("Seat Information requested by user not in room");
+			seats[0]=new SeatInfo(handle,-1,new ChatProfile());
+		}
 		return seats;
 	
 	}
@@ -164,34 +169,36 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 	public GameDelegate createGame(int id, String name, String type, boolean systemPickOrder) {	return null; }
 	public QSeat addUserToGame(QHandle handle, GameDelegate game) throws UserNotInRoomException { return null; }
 	public void removeUserFromGame(QHandle handle) {}
-	public GameDelegate getGame(QSeat user) { return null; }
+	public GameDelegate getGame(QHandle handle) { return null; }
 	public void destroyGame(GameDelegate game) {}
 	public ObservedGame observeGame(QHandle handle) { return null; }
 
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.QRoom#getExtSeatInfoList(org.jbrain.qlink.chat.QSeat)
+	 * @see org.jbrain.qlink.chat.QRoomDelegate#getExtSeatInfoList(org.jbrain.qlink.chat.QSeat)
 	 */
-	public QSeat[] getExtSeatInfoList(QSeat user) {
-		Channel chan=_ircConn.getClientState().getChannel(_sChannel);
-		Enumeration enum=chan.getMembers();
+	public QSeat[] getExtSeatInfoList(QHandle handle) {
 		List l=new ArrayList();
-		Member m;
-		while(enum.hasMoreElements()) {
-			m=(Member)enum.nextElement();
-			if(!m.getNick().equals(SERVER_NICK)) {
-				l.add(new SeatInfo(new QHandle(fix(m.getNick().getNick()))));
+		Channel chan=_ircConn.getClientState().getChannel(_sChannel);
+		if(chan!=null) {
+			Enumeration enum=chan.getMembers();
+			Member m;
+			while(enum.hasMoreElements()) {
+				m=(Member)enum.nextElement();
+				if(!m.getNick().equals(SERVER_NICK)) {
+					l.add(new SeatInfo(new QHandle(fix(m.getNick().getNick()))));
+				}
 			}
 		}
 		l.addAll(_htUsers.values());
 		return (QSeat[])l.toArray(new SeatInfo[0]);
 	}
 
-	public QSeat changeUserName(QSeat user, QHandle handle, ChatProfile profile) {
-		String text=fix(user.getHandle().toString()) + " is now known as " + fix(handle.toString());
-		//sendText("",text);
-		return super.changeUserName(user,handle,profile);
-	}
+	//public boolean changeUserName(QHandle oldHandle, QHandle handle, ChatProfile profile) {
+	//	String text=fix(oldHandle.toString()) + " is now known as " + fix(handle.toString());
+	//	//sendText("",text);
+	//	return super.changeUserName(oldHandle,handle,profile);
+	//}
 	/**
 	 * @param room
 	 * @param channel
@@ -245,7 +252,7 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 				//processEvent(new JoinEvent(this,JoinEvent.EVENT_LEAVE,22,((JoinEvent)event).getName()));
 				processEvent(new ChatEvent(this,-1,"","*" + ((JoinEvent)event).getName() + " leaves the room"));
 				if(_bJoined)
-					sendIRCCommand(new MessageCommand(_sChannel,"Left Room: " + ((JoinEvent)event).getName()));
+					sendIRCCommand(new MessageCommand(_sChannel,"Left QRoom: " + ((JoinEvent)event).getName()));
 			}
 		} else if(event instanceof ChatEvent) {
 			processEvent((ChatEvent)event);
@@ -267,7 +274,7 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 	 */
 	private void sendJoinInfo(String name) {
 		_log.debug("Sending join information to " + _sChannel + " for " + name);
-		sendIRCCommand(new MessageCommand(_sChannel,"Entered Room: " + name ));
+		sendIRCCommand(new MessageCommand(_sChannel,"Entered QRoom: " + name ));
 	}
 
 
@@ -444,21 +451,22 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 	 * @return
 	 */
 	private static String fix(String str) {
-		return str.replace((char)0x5f,(char)224);
+		return str.replace((char)0x5f,'-');
 	}
 
 
 	/**
 	 * 
 	 */
-	public void remove() {
-		_log.debug("Removing room: " + _sChannel);
+	public void close() {
+		_log.debug("Leaving IRC room: " + _sChannel);
 		_autoJoin.disable();
 		if(_bJoined)
-			sendIRCCommand(new PartCommand(_sChannel));
+			sendIRCCommand(new PartCommand(_sChannel,"Try QuantumLink RELOADED!"));
 		_htRooms.remove(_sChannel);
 		if(_htRooms.size()==0)
 			disconnect();
+		super.close();
 	}
 
 
@@ -521,9 +529,9 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 	 * @param name
 	 * @return
 	 */
-	public static QRoom getInstance(String name,boolean bPublic, boolean bLocked) {
+	public static QRoomDelegate getInstance(String name,boolean bPublic, boolean bLocked) {
 		String channel="#"+new QHandle(name.substring(4)).getKey();
-		QRoom room=(QRoom)_htRooms.get(channel);
+		QRoomDelegate room=(QRoomDelegate)_htRooms.get(channel);
 		if(room==null)
 			room=new IRCRoomDelegate(name,bPublic,bLocked);
 		return room;
@@ -531,7 +539,7 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 
 
 	/* (non-Javadoc)
-	 * @see org.jbrain.qlink.chat.QRoom#isManagedRoom()
+	 * @see org.jbrain.qlink.chat.QRoomDelegate#isManagedRoom()
 	 */
 	public boolean isManagedRoom() {
 		return false;

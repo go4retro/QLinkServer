@@ -31,20 +31,20 @@ import org.jbrain.qlink.user.QHandle;
 public class Game {
 
 	private GameDelegate _game;
-	private QSeat _seat;
-	private QRoom _room;
-	public Game(QRoom room, QSeat seat, GameDelegate delegate) {
+	private QHandle _handle;
+	private QRoomDelegate _room;
+	public Game(QRoomDelegate room, QHandle handle, GameDelegate delegate) {
 		_game=delegate;
-		_seat=seat;
+		_handle=handle;
 		_room=room;
 	}
 
 	public void acceptInvite() {
-		_game.acceptInvite(_seat);
+		_game.acceptInvite(_handle);
 	}
 
 	public void declineInvite() {
-		_game.declineInvite(_seat);
+		_game.declineInvite(_handle);
 	}
 
 	public void addListener(GameEventListener listener) {
@@ -102,14 +102,14 @@ public class Game {
 	 * @param text
 	 */
 	public void send(String text) {
-		_game.send(_seat,text);
+		_game.send(_handle,text);
 	}
 
 	/**
 	 * 
 	 */
 	public void requestRestart() {
-		_game.requestRestart(_seat);
+		_game.requestRestart(_handle);
 		
 	}
 
@@ -117,7 +117,7 @@ public class Game {
 	 * 
 	 */
 	public void acceptRestart() {
-		_game.acceptRestart(_seat);
+		_game.acceptRestart(_handle);
 		
 	}
 
@@ -125,14 +125,14 @@ public class Game {
 	 * 
 	 */
 	public void requestLoad() {
-		_game.requestLoad(_seat);
+		_game.requestLoad(_handle);
 	}
 
 	/**
 	 * 
 	 */
 	public void readyToStart() {
-		_game.readyToStart(_seat);
+		_game.readyToStart(_handle);
 	}
 
 	public List getAbstainList() {
@@ -143,7 +143,7 @@ public class Game {
 	 * 
 	 */
 	public void leave() {
-		_game.leave(_seat);
+		_game.leave(_handle);
 		
 	}
 
@@ -151,7 +151,7 @@ public class Game {
 	 * 
 	 */
 	public void restart() {
-		_game.restart(_seat);
+		_game.restart(_handle);
 	}
 
 	/**
@@ -165,14 +165,14 @@ public class Game {
 	 * 
 	 */
 	public void start() {
-		_game.start(_seat);
+		_game.start(_handle);
 	}
 
 	/**
 	 * 
 	 */
 	public void declineRestart() {
-		_game.declineRestart(_seat);
+		_game.declineRestart(_handle);
 		
 	}
 

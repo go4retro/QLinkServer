@@ -18,7 +18,7 @@
  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
  @author Jim Brain
- Created on Oct 2, 2005
+ Created on Aug 23, 2005
  
  */
 package org.jbrain.qlink.chat;
@@ -26,31 +26,23 @@ package org.jbrain.qlink.chat;
 import org.jbrain.qlink.user.QHandle;
 
 public interface QRoom {
-	public String getName();
-	public int getPopulation();
-	QSeat addUser(QHandle handle, ChatProfile security);
-	public boolean isFull();
-	public QSeat[] getSeatInfoList(QSeat _user);
-	void removeUser(QSeat user);
-	public void say(QSeat user, String text);
-	public void addEventListener(RoomEventListener listener);
-	public void removeEventListener(RoomEventListener listener);
-	public boolean isPublicRoom();
-	public boolean isLocked();
-	public GameDelegate createGame(int id, String name, String type,boolean systemPickOrder);
-	public void removeUserFromGame(QHandle handle);
-	public GameDelegate getGame(QSeat user);
-	public QSeat getSeatInfo(QHandle handle);
-	public void destroyGame(GameDelegate game);
+
+	public abstract String getName();
+	public abstract int getPopulation();
+	public abstract QSeat[] getSeatInfoList();
+	public abstract QSeat[] getExtSeatInfoList();
+	public abstract void addEventListener(RoomEventListener listener);
+	public abstract void removeEventListener(RoomEventListener listener);
+	public abstract void say(String[] text);
+	public abstract void say(String text);
+	public abstract void leave();
+	public abstract Game createGame(int id, String name, String type, boolean systemPickOrder);
+	public abstract Game getPendingGame();
+	public abstract QSeat getSeatInfo(QHandle handle);
+	public abstract boolean isPublicRoom();
 	public GameInfo[] getGameInfoList();
-	public QSeat addUserToGame(QHandle handle, GameDelegate game) throws UserNotInRoomException;
 	public String getInfo();
-	public ObservedGame observeGame(QHandle handle);
-	public QSeat[] getExtSeatInfoList(QSeat user);
-	public QSeat changeUserName(QSeat user, QHandle handle, ChatProfile profile);
-	public boolean isManagedRoom();
-	/**
-	 * 
-	 */
-	public void close();
+	public abstract ObservedGame observeGame(QHandle handle);
+	public abstract boolean changeUserName(QHandle handle, ChatProfile profile);
+	public abstract boolean canTalk();
 }
