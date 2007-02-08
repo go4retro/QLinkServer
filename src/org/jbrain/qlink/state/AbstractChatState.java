@@ -40,6 +40,7 @@ public abstract class AbstractChatState extends AbstractState {
 	private static Logger _log=Logger.getLogger(AbstractChatState.class);
 	private static ChatProfile _staffProfile=new ChatProfile();
 	private static ChatProfile _normalProfile=new ChatProfile();
+	protected static RoomManager _mgr=RoomManager.getRoomManager();
 	protected Room _room=null;
 	protected QueuedChatEventListener _listener;
 
@@ -223,7 +224,7 @@ public abstract class AbstractChatState extends AbstractState {
 					if(st.hasMoreTokens()) {
 						name=st.nextToken("\n");
 						handle=new QHandle(name);
-						if(RoomManager.getUserLocation(handle) != null) {
+						if(_mgr.getUserLocation(handle) != null) {
 							_log.debug("Kicked '" + handle + "' off");
 							_session.getServer().sendToUser(handle,new Toss("You have violated the TOS and your session has been terminated " + (char)0xff + (char)0xff + "Press F5 to return to BASIC"));
 							_session.getServer().killSession(handle);

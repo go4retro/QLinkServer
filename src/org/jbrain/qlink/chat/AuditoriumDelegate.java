@@ -123,7 +123,7 @@ class AuditoriumDelegate extends RoomDelegate {
 	 * @param name
 	 */
 	public AuditoriumDelegate(String name) {
-		super(name,true,true);
+		super(name,false,true);
 	}
 	
 	public synchronized void queue(QHandle handle, String[] question) {

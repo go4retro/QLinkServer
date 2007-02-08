@@ -25,5 +25,4 @@ package org.jbrain.qlink.chat;
 
 
 public interface RoomEvent {
-
 }

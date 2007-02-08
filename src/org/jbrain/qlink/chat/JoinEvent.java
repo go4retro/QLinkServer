@@ -33,7 +33,7 @@ public class JoinEvent extends EventObject implements RoomEvent {
 	private int _seat;
 	private String _name;
 
-	public JoinEvent(Object obj, int type, int id, String name) {
+	public JoinEvent(QRoom obj, int type, int id, String name) {
 		super(obj);
 		_iType=type;
 		_seat=id;
@@ -51,5 +51,9 @@ public class JoinEvent extends EventObject implements RoomEvent {
 	public int getType() {
 		return _iType;
 	}
-	
+
+	public QRoom getRoom() {
+		return (QRoom)getSource();
+	}
+
 }

@@ -39,10 +39,6 @@ public class Auditorium extends AbstractRoom {
 		say(s);
 	}
 	
-	public synchronized void addEventListener(RoomEventListener listener) {
-		super.addEventListener(listener);
-	}
-
 	/* (non-Javadoc)
 	 * @see org.jbrain.qlink.chat.Room#createGame(java.lang.String, java.lang.String, boolean)
 	 */

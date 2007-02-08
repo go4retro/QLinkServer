@@ -38,7 +38,7 @@ public class NormalRoom extends AbstractRoom{
 	}
 	
 	public void leave() {
-		RoomManager.leaveRoom(_room,_user);
+		RoomManager.getRoomManager().leaveRoom(_room,_user);
 		super.leave();
 	}
 

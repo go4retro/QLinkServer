@@ -289,6 +289,9 @@ public class ActionFactory {
 		if(action.equals(ExtIdentifyUser.MNEMONIC)) {
 			return new ExtIdentifyUser(b,start,len);
 		}
+		if(action.equals(SelectFileDocumentation.MNEMONIC)) {
+			return new SelectFileDocumentation(b,start,len);
+		}
 		
 		return new UnknownAction(b,start,len);
 	}

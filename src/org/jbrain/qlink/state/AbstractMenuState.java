@@ -86,7 +86,6 @@ class MessageEntry {
 	private int _iReplies=0;
 	private String _sAuthor;
 	private int _iID;
-	private int _iReplyID=0;
 
 	public MessageEntry(int id, String title, String author, Date date) {
 		_iID=id;
@@ -127,8 +126,6 @@ class MessageEntry {
 	 * @param int1
 	 */
 	public void addReplyID(int id) {
-		if(_iReplyID==0)
-			_iReplyID=id;
 		_iReplies++;
 		
 	}
@@ -154,10 +151,6 @@ public abstract class AbstractMenuState extends AbstractState {
 	protected ArrayList _alMessages = new ArrayList();
 	protected HashMap _hmMessages = new HashMap();
 	protected ArrayList _alMenu = new ArrayList();
-	protected int _iCurrMenuID;
-	protected int _iCurrMessageID;
-	protected int _iNextMessageID;
-	protected int _iCurrParentID;
 	private boolean _bSuperChat=false;
 	
 	public AbstractMenuState(QSession session) {

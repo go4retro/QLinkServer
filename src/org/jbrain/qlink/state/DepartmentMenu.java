@@ -47,6 +47,10 @@ import org.jbrain.qlink.user.UserManager;
 public class DepartmentMenu extends AbstractMenuState {
 	private static Logger _log=Logger.getLogger(DepartmentMenu.class);
 	private InputStream _is;
+	protected int _iCurrMenuID;
+	protected int _iCurrMessageID;
+	protected int _iNextMessageID;
+	protected int _iCurrParentID;
 	
 	private List _lRefreshAccounts=null;
 	private AccountInfo _refreshAccount=null;
@@ -77,6 +81,11 @@ public class DepartmentMenu extends AbstractMenuState {
 	    		_session.send(new SendSYSOLM("System: Refreshing user name list"));
 	    		refreshAccount();
 			}
+		} else if(a instanceof SelectFileDocumentation) {
+			rc=true;
+			int id=((SelectFileDocumentation)a).getID();
+			_log.debug("Getting documentation for File ID: " + id);
+			displayDBTextFile(id);
 		} else if(a instanceof ListSearch) {
 			rc=true;
 			int id=((ListSearch)a).getID();
@@ -134,18 +143,24 @@ public class DepartmentMenu extends AbstractMenuState {
 			_log.debug("Received Post request with ID=" + id + " and index=" + index);
 			int pid;
 			int bid;
-			if(id==_iCurrMessageID) {
-				_log.debug("User requests a new reply");
-				pid=_iCurrParentID;
-				if(pid==0)
-					pid=id;
+			if(id==_iCurrParentID) {
+				_log.debug("User requests a new file comment");
+				// file comments
+				bid=pid=id;
 			} else {
-				_log.debug("User requests a new posting");
-				 if(id!=_iCurrMenuID)
-				 	selectMenu(id);
-				 pid=0;
+				if(id==_iCurrMessageID) {
+					_log.debug("User requests a new reply");
+					pid=_iCurrParentID;
+					if(pid==0)
+						pid=id;
+				} else {
+					_log.debug("User requests a new posting");
+					 if(id!=_iCurrMenuID)
+					 	selectMenu(id);
+					 pid=0;
+				}
+				bid=((MenuEntry)_alMenu.get(index)).getID();
 			}
-			bid=((MenuEntry)_alMenu.get(((RequestItemPost)a).getIndex())).getID();
 			state=new PostMessage(_session,bid,pid,_iNextMessageID);
 			state.activate();
 		} else if(a instanceof ResumeService) {
@@ -427,11 +442,19 @@ public class DepartmentMenu extends AbstractMenuState {
 	/**
 	 * 
 	 */
+	
+	private String pad="                 ";
 	private void displayFileInfo(int id) throws IOException {
         Connection conn=null;
         Statement stmt = null;
         ResultSet rs = null;
+        String name;
         
+        /*
+         * We may want to move the actual file description into a message, so the MessageID will be technically valid.
+         */
+        _iCurrMessageID=id;  // not really, but in PostItem, if this is not set, if thinks it is a new posting, but it is really a reply
+        _iNextMessageID=0;
         try {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();
@@ -439,10 +462,16 @@ public class DepartmentMenu extends AbstractMenuState {
 	        rs=stmt.executeQuery("SELECT name, filetype, description from files where reference_id=" + id);
 	        if(rs.next()) {
 	            TextFormatter tf=new TextFormatter(TextFormatter.FORMAT_NONE,39);
-	            tf.add("      " + rs.getString("name"));
+	            name=rs.getString("name");
+	            tf.add("      " + name);
 	            tf.add("     " + rs.getString("filetype"));
 	        	String data=rs.getString("description");
-	            _session.send(new InitDataSend(id,0,0));
+	        	// temp testing
+	        	rs=stmt.executeQuery("SELECT reference_id FROM messages WHERE parent_id=" + id + " LIMIT 1");
+	        	if(rs.next()) {
+	        		_iNextMessageID=rs.getInt("reference_id");
+	        	}
+	            _session.send(new InitDataSend(id,0,0,_iNextMessageID,0));
 	            tf.add(data);
 	            tf.add("\n <<   PRESS F7 FOR DOWNLOAD MENU    >> ");
 	            _lText=tf.getList();
@@ -470,7 +499,9 @@ public class DepartmentMenu extends AbstractMenuState {
         ResultSet rs = null;
         int next=0;
         int mid;
-        int pid;
+        int pid=0;
+        int bid=0;
+        int prev=0;
         TextFormatter tf=new TextFormatter(TextFormatter.FORMAT_NONE,39);
         
         _iCurrMessageID=id;
@@ -480,9 +511,10 @@ public class DepartmentMenu extends AbstractMenuState {
             stmt = conn.createStatement();
             _log.debug("Querying for message");
             String text;
-	        rs=stmt.executeQuery("SELECT parent_id, message_id,text FROM messages WHERE reference_id=" + id);
+	        rs=stmt.executeQuery("SELECT base_id,parent_id, message_id,text FROM messages WHERE reference_id=" + id);
 	        if(rs.next()) {
 	        	text=rs.getString("text");
+	        	bid=rs.getInt("base_id");
 	        	mid=rs.getInt("message_id");
 	        	pid=rs.getInt("parent_id");
 	        	_iCurrParentID=pid;
@@ -491,9 +523,19 @@ public class DepartmentMenu extends AbstractMenuState {
 	        		pid=id;
 	        	DBUtils.close(rs);
 	        	// are there any replies to either this message or it's parent?
-	        	rs=stmt.executeQuery("SELECT reference_id FROM messages WHERE message_id>" + mid + " AND parent_id=" + pid );
+	        	rs=stmt.executeQuery("SELECT reference_id FROM messages WHERE message_id>" + mid + " AND parent_id=" + pid + " LIMIT 1");
 	        	if(rs.next()) {
 	        		_iNextMessageID=rs.getInt("reference_id");
+	        		_log.debug("Message ID: " + id + " has next message ID: " + _iNextMessageID);
+	        	}
+	        	if(bid==pid) {
+	        		// only do this if it is a file comment.
+	        		DBUtils.close(rs);
+		        	rs=stmt.executeQuery("SELECT reference_id FROM messages WHERE message_id<" + mid + " AND parent_id=" + pid + " ORDER BY message_id DESC LIMIT 1");
+		        	if(rs.next()) {
+		        		prev=rs.getInt("reference_id");
+		        		_log.debug("Message ID: " + id + " has previous message ID: " + prev);
+		        	}
 	        	}
 	        } else {
 				_log.error("Message ID invalid.");
@@ -501,7 +543,12 @@ public class DepartmentMenu extends AbstractMenuState {
         	}
         	DBUtils.close(rs);
 	        // init data area
-            _session.send(new InitDataSend(id,0,0,_iNextMessageID,0));
+        	if(bid==pid) {
+        		// we are a file comment, as they have board ID same as parent id.
+                _session.send(new InitDataSend(id,prev,_iNextMessageID));
+        	} else {
+        		_session.send(new InitDataSend(id,0,0,_iNextMessageID,0));
+        	}
             tf.add(text);
             _lText=tf.getList();
 			clearLineCount();
@@ -632,8 +679,7 @@ public class DepartmentMenu extends AbstractMenuState {
         Date date=null;
         int replies=0;
         
-        _alMessages.clear();
-        _hmMessages.clear();
+        clearMessageList();
         try {
         	conn=DBUtils.getConnection();
             stmt = conn.createStatement();

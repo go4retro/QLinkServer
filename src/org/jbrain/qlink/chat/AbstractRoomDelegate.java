@@ -187,8 +187,16 @@ public abstract class AbstractRoomDelegate implements QRoom {
 				return newUser;
 			}
 		} return null;
-		
 	}
+
+	/* (non-Javadoc)
+	 * @see org.jbrain.qlink.chat.QRoom#close()
+	 */
+	public void close() {
+		// empty
+	}
+
+	
 	/**
 	 * @param event
 	 */

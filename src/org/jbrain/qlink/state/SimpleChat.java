@@ -134,7 +134,7 @@ public class SimpleChat extends AbstractChatState {
 		// enter room.
 		_log.debug(_session.getHandle() + "joins " + _sRoom);
 		// TODO what do we do if room is full?
-		_room=RoomManager.joinRoom(_sRoom, _session.getHandle(),getProfile(_session.getAccountInfo()), false);
+		_room=_mgr.joinRoom(_sRoom, _session.getHandle(),getProfile(_session.getAccountInfo()), false);
 		// create new listener.
 		seats=addListener();
 		showSeats(seats,false);

@@ -36,13 +36,14 @@ import org.jbrain.qlink.user.QHandle;
  */
 public class RoomManager {
 	private static Logger _log=Logger.getLogger(RoomManager.class);
-	private static Hashtable _htPublicRooms=new Hashtable();
+	private  Hashtable _htPublicRooms=new Hashtable();
 	private static Hashtable _htPrivateRooms=new Hashtable();
 	private static final String ROOM_LOBBY = "Lobby";
 	private static AuditoriumDelegate _auditorium;
+	private static ArrayList _listeners = new ArrayList();
+	private static RoomManager _mgr=new RoomManager();
 	
-	static {
-		// add a default Lobby.
+	private RoomManager() {
 		_log.debug("Creating default Lobby");
 		addPublicRoom(new RoomDelegate(ROOM_LOBBY,true,true));
 		_log.debug("Creating Auditorium");
@@ -62,9 +63,13 @@ public class RoomManager {
 		join(new QHandle("Person 9"),p);
 		join(new QHandle("Person 10"),p);*/
 	}
+	
+	public static RoomManager getRoomManager() {
+		return _mgr;
+	}
 
 	// does not need to be sync
-	public static Room join(QHandle handle,ChatProfile profile) {
+	public Room join(QHandle handle,ChatProfile profile) {
 		String name=ROOM_LOBBY;
 		Room room=null;
 		int i=(int)'A';
@@ -89,7 +94,7 @@ public class RoomManager {
 	 * If the Lobby is full, it will return null...
 	 */
 	// this needs to be sync
-	public synchronized static Room joinRoom(String name, QHandle handle, ChatProfile profile, boolean bPublic) {
+	public synchronized Room joinRoom(String name, QHandle handle, ChatProfile profile, boolean bPublic) {
 		QRoom room;
 		QSeat user=null;
 		
@@ -108,7 +113,7 @@ public class RoomManager {
 	}
 
 	// no need for sync
-	public static AbstractRoom joinAuditorium(QHandle handle, ChatProfile profile) {
+	public AbstractRoom joinAuditorium(QHandle handle, ChatProfile profile) {
 		QSeat user=_auditorium.addViewer(handle,profile);
 		return new Auditorium(_auditorium,user);
 	}
@@ -118,8 +123,7 @@ public class RoomManager {
 		_auditorium.removeViewer(handle);
 	}
 	
-	// must be synchronized
-	public synchronized static RoomInfo[] getRoomList() {
+	public synchronized RoomInfo[] getRoomInfoList() {
 		RoomInfo info[]=new RoomInfo[_htPublicRooms.size()];
 		QRoom room;
 		Iterator i=_htPublicRooms.values().iterator();
@@ -130,15 +134,42 @@ public class RoomManager {
 		}
 		return info;
 	}
+	
+	public List getRoomList() {
+			List l= new ArrayList(_htPublicRooms.values());
+			l.addAll(_htPrivateRooms.values());
+			return l;
+	}
 
-	public synchronized static RoomInfo getUserLocation(QHandle handle) {
+	public synchronized RoomInfo getUserLocation(QHandle handle) {
 		RoomInfo room=getUserLocation(_htPublicRooms,handle);
 		if(room==null)
 			room=getUserLocation(_htPrivateRooms,handle);
 		return room;
 	}
 
-	synchronized static void leaveRoom(QRoom room, QSeat user) {
+	public synchronized void removeEventListener(RoomManagerEventListener listener) {
+		_listeners.remove(listener);
+	}
+
+	public synchronized void addEventListener(RoomManagerEventListener listener) {
+		_listeners.add(listener);
+	}
+
+	private synchronized void processEvent(RoomManagerEvent event) {
+		if(event != null && _listeners.size() > 0) {
+			if(event.getType()==RoomManagerEvent.EVENT_ADD)
+				for(int i=0,size=_listeners.size();i<size;i++) {
+					((RoomManagerEventListener)_listeners.get(i)).roomAdded(event);
+				}
+			else
+				for(int i=0,size=_listeners.size();i<size;i++) {
+					((RoomManagerEventListener)_listeners.get(i)).roomRemoved(event);
+				}
+		}
+	}
+
+	synchronized void leaveRoom(QRoom room, QSeat user) {
 		if(room.isPublicRoom()) {
 			leavePublicRoom(room,user);
 		} else {
@@ -146,7 +177,7 @@ public class RoomManager {
 		}
 	}
 	
-	private static QRoom getPublicRoom(String name) {
+	private QRoom getPublicRoom(String name) {
 		QRoom room=(QRoom)_htPublicRooms.get(name.toLowerCase());
 		if(room==null) {
 			room=createRoom(name,true);
@@ -159,7 +190,7 @@ public class RoomManager {
 	 * @param name
 	 * @param b
 	 */
-	private static QRoom createRoom(String name, boolean b) {
+	private QRoom createRoom(String name, boolean b) {
 		QRoom room;
 		
 		if(b && name.toLowerCase().startsWith("irc ") && name.length()>4) {
@@ -169,7 +200,7 @@ public class RoomManager {
 		return room;
 	}
 
-	private static QRoom getPrivateRoom(String name) {
+	private QRoom getPrivateRoom(String name) {
 		QRoom room=(QRoom)_htPrivateRooms.get(name.toLowerCase());
 		if(room==null) {
 			room=createRoom(name,false);
@@ -177,17 +208,19 @@ public class RoomManager {
 		}
 		return room;
 	}
-	private static void addPublicRoom(QRoom room) {
+	private void addPublicRoom(QRoom room) {
 		_log.debug("Adding room '" + room.getName() + "' to public room list");
 		_htPublicRooms.put(room.getName().toLowerCase(),room);
+		processEvent(new RoomManagerEvent(this,RoomManagerEvent.EVENT_ADD,room));
 	}
 	
-	private static void addPrivateRoom(QRoom room) {
+	private void addPrivateRoom(QRoom room) {
 		_log.debug("Adding room '" + room.getName() + "' to private room list");
 		_htPrivateRooms.put(room.getName().toLowerCase(),room);
+		processEvent(new RoomManagerEvent(this,RoomManagerEvent.EVENT_ADD,room));
 	}
 	
-	private static void leavePublicRoom(QRoom room, QSeat user) {
+	private void leavePublicRoom(QRoom room, QSeat user) {
 		room.removeUser(user);
 		if(room.getPopulation()==0 && !room.isLocked()) {
 			removePublicRoom(room);
@@ -197,25 +230,35 @@ public class RoomManager {
 	/**
 	 * @param room
 	 */
-	private static void removePublicRoom(QRoom room) {
+	private void removePublicRoom(QRoom room) {
 		_log.debug("Removing room '" + room.getName() + "' from public room list");
 		_htPublicRooms.remove(room.getName().toLowerCase());
+		try {
+			processEvent(new RoomManagerEvent(this,RoomManagerEvent.EVENT_REMOVE,room));
+		} finally {
+			room.close();
+		}
 		
 	}
 
-	private static void leavePrivateRoom(QRoom room, QSeat user) {
+	private void leavePrivateRoom(QRoom room, QSeat user) {
 		room.removeUser(user);
 		if(room.getPopulation()==0 && !room.isLocked())
 			removePublicRoom(room);
 	}
 
-	private static void removePrivateRoom(QRoom room) {
+	private void removePrivateRoom(QRoom room) {
 		_log.debug("Removing room '" + room.getName() + "' from private room list");
 		_htPrivateRooms.remove(room.getName());
+		try {
+			processEvent(new RoomManagerEvent(this,RoomManagerEvent.EVENT_REMOVE,room));
+		} finally {
+			room.close();
+		}
 		
 	}
 
-	private static RoomInfo getUserLocation(Hashtable hm,QHandle handle) {
+	private RoomInfo getUserLocation(Hashtable hm,QHandle handle) {
 		Iterator i=hm.values().iterator();
 		QRoom room;
 		while(i.hasNext()) {

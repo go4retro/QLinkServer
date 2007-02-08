@@ -49,4 +49,8 @@ public interface QRoom {
 	public QSeat[] getExtSeatInfoList(QSeat user);
 	public QSeat changeUserName(QSeat user, QHandle handle, ChatProfile profile);
 	public boolean isManagedRoom();
+	/**
+	 * 
+	 */
+	public void close();
 }

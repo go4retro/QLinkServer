@@ -143,11 +143,6 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 	public void removeUser(QSeat user) {
 		if(isInRoom(user))
 			leaveSeat(user);
-		if(getPopulation()==0) {
-			// TODO do this in RoomManager...
-			// get rid of room.
-			removeRoom();
-		}
 	}
 
 
@@ -456,7 +451,7 @@ public class IRCRoomDelegate extends AbstractRoomDelegate {
 	/**
 	 * 
 	 */
-	private void removeRoom() {
+	public void remove() {
 		_log.debug("Removing room: " + _sChannel);
 		_autoJoin.disable();
 		if(_bJoined)

@@ -407,6 +407,7 @@ Client to server in hangman:
 GE * User has quit the game
 GM * Indicates user move
 GR * Indicates user has loaded the game and is ready to go
+JS   Suspend game <filename> comes after in ASCII
 
 Menu command information
 

@@ -30,49 +30,23 @@ import org.jbrain.qlink.user.QHandle;
 
 public class Game {
 
-	/**
-	 * 
-	 * @uml.property name="_game"
-	 * @uml.associationEnd multiplicity="(1 1)"
-	 */
 	private GameDelegate _game;
-
 	private QSeat _seat;
-
-	/**
-	 * 
-	 * @uml.property name="_room"
-	 * @uml.associationEnd multiplicity="(1 1)"
-	 */
 	private QRoom _room;
-
-	/**
-	 * @param _seat
-	 * @param delegate
-	 */
 	public Game(QRoom room, QSeat seat, GameDelegate delegate) {
 		_game=delegate;
 		_seat=seat;
 		_room=room;
 	}
 
-	/**
-	 * 
-	 */
 	public void acceptInvite() {
 		_game.acceptInvite(_seat);
 	}
 
-	/**
-	 * 
-	 */
 	public void declineInvite() {
 		_game.declineInvite(_seat);
 	}
 
-	/**
-	 * @param _listener
-	 */
 	public void addListener(GameEventListener listener) {
 		_game.addListener(listener);
 		

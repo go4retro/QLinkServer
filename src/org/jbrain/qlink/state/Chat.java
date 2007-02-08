@@ -55,7 +55,7 @@ public class Chat extends AbstractChatState {
 		_log.debug(_session.getHandle() + " joins Lobby");
 		// find a Lobby to enter, get our seat number, etc.
 		// need to make sure no enter/leaves slip by while in here.
-		_room=RoomManager.join(_session.getHandle(),getProfile(_session.getAccountInfo()));
+		_room=_mgr.join(_session.getHandle(),getProfile(_session.getAccountInfo()));
 		seats=addListener();
 		sendRoomInfo(seats);
 	}
@@ -87,7 +87,7 @@ public class Chat extends AbstractChatState {
 		} else if(a instanceof ListRooms) {
 			_log.debug("Listing Public rooms");
 			rc=true;
-			_rooms=RoomManager.getRoomList();
+			_rooms=_mgr.getRoomInfoList();
 			_roomPos=0;
 			sendRoomList();
 		} else if(a instanceof ListMoreRooms) {
@@ -124,7 +124,7 @@ public class Chat extends AbstractChatState {
 				_log.debug("LOCATE Error: User is not online");
 				_session.send(new UserNotOnline());
 			} else {
-				RoomInfo room=RoomManager.getUserLocation(handle);
+				RoomInfo room=_mgr.getUserLocation(handle);
 				if(room==null) {
 					_log.debug("LOCATE Error: User is unavailable");
 					_session.send(new UserUnavailable());
@@ -234,17 +234,27 @@ public class Chat extends AbstractChatState {
 		int mySeat=0;
 		QSeat[] seats;
 		
-		_log.debug("Joining room: " + name);
-		room=RoomManager.joinRoom(name,_session.getHandle(),getProfile(_session.getAccountInfo()),b);
-		if(room==null) {
-			_log.debug("Room is full");
-			// send room is full.
-			_session.send(new C2());
+		if(!_room.getName().toLowerCase().equals(name.toLowerCase()) && _room.isPublicRoom()==b) {
+			_log.debug("Joining room: " + name);
+			room=_mgr.joinRoom(name,_session.getHandle(),getProfile(_session.getAccountInfo()),b);
+			if(room==null) {
+				_log.debug("Room is full");
+				// send room is full.
+				_session.send(new C2());
+			} else {
+				leaveRoom();
+				// enter new room
+				_room=room;
+				seats=addListener();
+				showSeats(seats,true);
+			}
 		} else {
-			leaveRoom();
-			// enter new room
-			_room=room;
-			seats=addListener();
+			_log.debug("User changed to same room");
+			synchronized(_room) {
+				_listener.suspend();
+				_log.debug("Getting seat information");
+				seats=_room.getSeatInfoList();
+			}
 			showSeats(seats,true);
 		}
 	}
@@ -275,7 +285,7 @@ public class Chat extends AbstractChatState {
 		
 		leaveRoom();
 		_log.debug("Joining Auditorium");
-		_room=RoomManager.joinAuditorium(_session.getHandle(),getProfile(_session.getAccountInfo()));
+		_room=_mgr.joinAuditorium(_session.getHandle(),getProfile(_session.getAccountInfo()));
 		seats=addListener();
 		sendRoomInfo(seats);
 		sendAuditoriumText();

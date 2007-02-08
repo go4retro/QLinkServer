@@ -23,57 +23,77 @@
  */
 package org.jbrain.qlink.io;
 
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
 
-public class EscapedInputStream extends InputStream {
-	private static final int ESCAPE=0x5D;
-	private static final int ESCAPE_00=0x55;
-	private static final int ESCAPE_0D=0x58;
-	private static final int ESCAPE_0E=0x5B;
-	private static final int ESCAPE_5D=0x8;
-	private static final int ESCAPE_FF=0xAA;
-	private InputStream _is;
+public class EscapedInputStream extends FilterInputStream implements QStream {
 	private int _iEscape;
 	
 	public EscapedInputStream(InputStream is) {
-		_is=is;
-		_iEscape=-1;
+		super(is);
+	}
+	
+	public int read(byte[] b, int start, int len) throws IOException {
+		// we need to make sure we call our own read() method, not the underlying transport's.
+		if (b == null) {
+		    throw new NullPointerException();
+		} else if ((start < 0) || (start > b.length) || (len < 0) ||
+			   ((start + len) > b.length) || ((start + len) < 0)) {
+		    throw new IndexOutOfBoundsException();
+		} else if (len == 0) {
+		    return 0;
+		}
+
+		int c = read();
+		if (c == -1) {
+		    return -1;
+		}
+		b[start] = (byte)c;
+
+		int i = 1;
+		try {
+		    for (; i < len ; i++) {
+				c = read();
+				if (c == -1) {
+				    break;
+				}
+				if (b != null) {
+				    b[start + i] = (byte)c;
+				}
+		    }
+		} catch (IOException e) { }
+		return i;
 	}
 	
 	public int read() throws IOException {
 		int rc;
 		
 		if(_iEscape>-1) {
-			rc=_iEscape;
+			rc=_iEscape ^ ESCAPE_XOR;
 			_iEscape=-1;
 		} else {
-			rc=_is.read();
+			rc=super.read();
 			switch(rc) {
 				case 0x00:
-					_iEscape=ESCAPE_00;
-					rc=ESCAPE;
-					break;
 				case 0x0d:
-					_iEscape=ESCAPE_0D;
-					rc=ESCAPE;
-					break;
 				case 0x0e:
-					_iEscape=ESCAPE_0E;
-					rc=ESCAPE;
-					break;
 				case 0x5d:
-					_iEscape=ESCAPE_5D;
-					rc=ESCAPE;
-					break;
 				case 0xff:
-					_iEscape=ESCAPE_FF;
+					_iEscape=rc;
 					rc=ESCAPE;
 					break;
 			}
 		}
 		return rc;
 	}
-
+	
+	public int available() throws IOException {
+		return super.available()+(_iEscape!=-1?1:0);
+	}
+	
+	public boolean markSupported() {
+		return false;
+	}
 }

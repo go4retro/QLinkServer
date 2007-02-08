@@ -30,7 +30,6 @@ import org.apache.log4j.Logger;
 import org.jbrain.qlink.QSession;
 import org.jbrain.qlink.chat.QSeat;
 import org.jbrain.qlink.chat.RoomInfo;
-import org.jbrain.qlink.chat.RoomManager;
 import org.jbrain.qlink.cmd.action.*;
 import org.jbrain.qlink.cmd.action.fdo.*;
 import org.jbrain.qlink.cmd.action.fdo.ext.FDOMenuHelper;
@@ -92,7 +91,7 @@ public class SuperChat extends Chat {
 			_session.send(helper.getMenu());
 		} else if(a instanceof ListRooms) {
 			// override Chat ListRooms function.
-			RoomInfo[] rooms=RoomManager.getRoomList();
+			RoomInfo[] rooms=_mgr.getRoomInfoList();
 			FDO fdo=new FDO(new NewWindow(FDOWindowType.TYPE_TEXT_WINDOW));
 			for(int i=0;i<rooms.length;i++) {
 				if(!fdo.add(new FDORoomInfo(rooms[i]))) {
@@ -152,7 +151,7 @@ public class SuperChat extends Chat {
 						name=st.nextToken("\n");
 						enterRoom(name,true);
 					} else {
-						RoomInfo[] rooms=RoomManager.getRoomList();
+						RoomInfo[] rooms=_mgr.getRoomInfoList();
 						// need to put up room list.
 						FDOMenuHelper helper=new FDOMenuHelper();
 						for(int i=0;i<rooms.length;i++) {

@@ -37,6 +37,7 @@ import org.apache.log4j.Logger;
 import org.jbrain.qlink.cmd.action.Action;
 import org.jbrain.qlink.cmd.action.Toss;
 import org.jbrain.qlink.db.DBUtils;
+import org.jbrain.qlink.extensions.RoomAuditor;
 import org.jbrain.qlink.user.QHandle;
 
 
@@ -48,6 +49,7 @@ public class QLinkServer {
 	private Date _newest;
 	private static int _iSessionCount=0;
 	private static int _iErrorCount=0;
+
 	private SessionEventListener _listener=new SessionEventListener() {
 
 		public void userNameChanged(UserNameChangeEvent event) {
@@ -214,6 +216,12 @@ public class QLinkServer {
 			}
 		}
 		new QTCPListener(this,iPort);
+		
+		// at this point, we should load the extensions...
+		// TODO make extensions flexible.
+		
+		new RoomAuditor(this);
+		
 	}
 
 	public static void main(String[] args) {
@@ -240,10 +248,5 @@ public class QLinkServer {
 			_log.info("Exitting the server to launch again");
 			System.exit(0);
 		}
-		
-		
-		
-		// TODO Auto-generated method stub
-		
 	}
 }

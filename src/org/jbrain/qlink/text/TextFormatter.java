@@ -67,10 +67,15 @@ public class TextFormatter {
 			} else {
 				// continue backing up till no space is found.
 				int pos2=pos;
-				while(string.charAt(pos2)==' ')
+				while(pos2>start && string.charAt(pos2)==' ')
 					pos2--;
 				if(pos2!=start) 
 					addLine(string.substring(start,pos2+1));
+				else {
+					// case '    longline......'
+					// add a blank line and continue on the next line.
+					addLine("");
+				}
 			}
 			// walk forward...
 			while(pos < string.length() && string.charAt(pos)==' ')
@@ -107,7 +112,8 @@ public class TextFormatter {
 	}
 	
 	public static void main (String a[]) {
-		TextFormatter tf=new TextFormatter(TextFormatter.FORMAT_PADDED,29);
-		tf.add("This is a multi-line quesion.I am not sure it will work,  but maybe it will I hope it");
+        TextFormatter tf=new TextFormatter(TextFormatter.FORMAT_NONE,39);
+        tf.add("      " + "my1stdl.prg" + "2222222222222222222222222" );
+        tf.getList();
 	}
 } 
