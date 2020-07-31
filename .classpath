@@ -2,8 +2,8 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="C:/mount/home/brain/projects/QLinkServer/lib/mysql-connector-java-3.1.10-bin.jar"/>
-	<classpathentry kind="lib" path="C:/mount/home/brain/projects/QLinkServer/lib/log4j-1.2.5.jar"/>
-	<classpathentry kind="lib" path="C:/mount/home/brain/projects/QLinkServer/lib/martyr.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-1.2.5.jar"/>
+	<classpathentry kind="lib" path="lib/martyr.jar"/>
+	<classpathentry kind="lib" path="lib/mysql-connector-java-3.1.10-bin.jar"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>

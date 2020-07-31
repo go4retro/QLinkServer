@@ -28,10 +28,6 @@ import org.jbrain.qlink.cmd.Command;
 
 public interface Action extends Command {
 
-	/**
-	 * 
-	 * @uml.property name="action" multiplicity="(0 1)"
-	 */
 	public String getAction();
 
 }
